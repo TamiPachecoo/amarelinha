@@ -178,6 +178,13 @@ export function CollectionForm({ initialValues, onSubmit, onCancel }: Collection
                 <FileText className="size-5 shrink-0 text-foreground" />
                 <span className="truncate text-foreground">{catalogoPdf.name}</span>
               </>
+            ) : initialValues?.catalogoPdfNome ? (
+              <>
+                <FileText className="size-5 shrink-0 text-foreground" />
+                <span className="truncate text-foreground">
+                  {initialValues.catalogoPdfNome} (clique para substituir)
+                </span>
+              </>
             ) : (
               <>
                 <Upload className="size-5 shrink-0" />

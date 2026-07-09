@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { FileText, PackageSearch, Plus, ShoppingBag } from "lucide-react"
+import { FileText, PackageSearch, Pencil, Plus, ShoppingBag } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table"
 import { CollectionForm } from "@/features/collections/components/CollectionForm"
 import { useCollectionsStore } from "@/features/collections/store/collectionsStore"
-import { collectionStatusLabel } from "@/features/collections/types"
+import { collectionStatusLabel, type Collection } from "@/features/collections/types"
 import type { CollectionFormValues } from "@/features/collections/schemas/collectionSchema"
 import { usePurchaseOrdersStore } from "@/features/purchasing/store/purchaseOrdersStore"
 import { useSuppliersStore } from "@/features/suppliers/store/suppliersStore"
@@ -36,9 +36,11 @@ const statusVariant = {
 export function CollectionsPage() {
   const collections = useCollectionsStore((state) => state.collections)
   const addCollection = useCollectionsStore((state) => state.addCollection)
+  const updateCollection = useCollectionsStore((state) => state.updateCollection)
   const suppliers = useSuppliersStore((state) => state.suppliers)
   const orders = usePurchaseOrdersStore((state) => state.orders)
   const [isDialogOpen, setDialogOpen] = useState(false)
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(null)
 
   function supplierName(supplierId: string) {
     return suppliers.find((s) => s.id === supplierId)?.nome ?? "—"
@@ -64,6 +66,16 @@ export function CollectionsPage() {
       catalogoPdfNome: catalogoPdf?.name,
     })
     setDialogOpen(false)
+  }
+
+  async function handleUpdate(values: CollectionFormValues, catalogoPdf: File | null) {
+    if (!editingCollection) return
+    updateCollection(editingCollection.id, {
+      ...values,
+      catalogoPdfUrl: catalogoPdf ? await fileToDataUrl(catalogoPdf) : editingCollection.catalogoPdfUrl,
+      catalogoPdfNome: catalogoPdf?.name ?? editingCollection.catalogoPdfNome,
+    })
+    setEditingCollection(null)
   }
 
   return (
@@ -136,14 +148,19 @@ export function CollectionsPage() {
                     {pedidosDaColecao(collection.id)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {collection.catalogoPdfUrl && (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link to={`/colecoes/${collection.id}/pedido-catalogo`}>
-                          <ShoppingBag className="size-4" />
-                          Montar Pedido
-                        </Link>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setEditingCollection(collection)}>
+                        <Pencil className="size-4" />
                       </Button>
-                    )}
+                      {collection.catalogoPdfUrl && (
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to={`/colecoes/${collection.id}/pedido-catalogo`}>
+                            <ShoppingBag className="size-4" />
+                            Montar Pedido
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -158,6 +175,21 @@ export function CollectionsPage() {
             <DialogTitle>Nova Coleção</DialogTitle>
           </DialogHeader>
           <CollectionForm onSubmit={handleAdd} onCancel={() => setDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editingCollection !== null} onOpenChange={(open) => !open && setEditingCollection(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Coleção</DialogTitle>
+          </DialogHeader>
+          {editingCollection && (
+            <CollectionForm
+              initialValues={editingCollection}
+              onSubmit={handleUpdate}
+              onCancel={() => setEditingCollection(null)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
