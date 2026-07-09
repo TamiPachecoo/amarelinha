@@ -8,7 +8,6 @@ function fromRow(row: Record<string, unknown>): Supplier {
     id: row.id as string,
     nome: row.nome as string,
     contatoNome: (row.contato_nome as string) ?? undefined,
-    telefone: row.telefone as string,
     whatsapp: row.whatsapp as string,
     email: (row.email as string) ?? undefined,
     instagram: (row.instagram as string) ?? undefined,
@@ -26,7 +25,6 @@ function toRow(supplier: Supplier) {
     id: supplier.id,
     nome: supplier.nome,
     contato_nome: supplier.contatoNome || null,
-    telefone: supplier.telefone,
     whatsapp: supplier.whatsapp,
     email: supplier.email || null,
     instagram: supplier.instagram || null,
@@ -82,7 +80,6 @@ export const useSuppliersStore = create<SuppliersState>((set) => ({
       .update({
         nome: input.nome,
         contato_nome: input.contatoNome || null,
-        telefone: input.telefone,
         whatsapp: input.whatsapp,
         email: input.email || null,
         instagram: input.instagram || null,

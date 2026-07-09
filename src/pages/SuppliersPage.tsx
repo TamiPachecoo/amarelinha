@@ -129,8 +129,6 @@ export function SuppliersPage() {
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <dt className="text-muted-foreground">Contato</dt>
                 <dd className="text-right font-medium">{viewing.contatoNome || "—"}</dd>
-                <dt className="text-muted-foreground">Telefone</dt>
-                <dd className="text-right font-medium">{viewing.telefone}</dd>
                 <dt className="text-muted-foreground">WhatsApp</dt>
                 <dd className="text-right font-medium">{viewing.whatsapp}</dd>
                 <dt className="text-muted-foreground">E-mail</dt>

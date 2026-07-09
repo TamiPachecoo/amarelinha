@@ -2,7 +2,6 @@ export interface Supplier {
   id: string
   nome: string
   contatoNome?: string
-  telefone: string
   whatsapp: string
   email?: string
   instagram?: string

@@ -145,7 +145,47 @@ export function InventoryTable({ rows, onAdjust }: InventoryTableProps) {
         />
       ) : (
         <>
-          <div className="rounded-xl border border-border bg-card">
+          <div className="space-y-3 sm:hidden">
+            {paginated.map((row) => (
+              <div key={row.variantId} className="rounded-xl border border-border bg-card p-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
+                    {row.foto ? (
+                      <img src={row.foto} alt={row.produto} className="size-full object-cover" />
+                    ) : (
+                      <ImageOff className="size-5" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate font-medium text-foreground">{row.produto}</p>
+                      <Badge className={statusLabel[row.status].className}>
+                        {statusLabel[row.status].label}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {row.marca} · {row.categoria}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {row.cor} / {row.tamanho} · 📍 {row.localizacao}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground">{row.quantidade}</span> em
+                    estoque (mín. {row.estoqueMinimo})
+                  </p>
+                  <Button variant="ghost" size="sm" onClick={() => onAdjust(row)}>
+                    <Settings2 className="size-4" />
+                    Movimentar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden rounded-xl border border-border bg-card sm:block">
             <Table>
               <TableHeader>
                 <TableRow>

@@ -32,7 +32,6 @@ export function SupplierForm({ initialValues, onSubmit, onCancel }: SupplierForm
     defaultValues: initialValues ?? {
       nome: "",
       contatoNome: "",
-      telefone: "",
       whatsapp: "",
       email: "",
       instagram: "",
@@ -89,20 +88,6 @@ export function SupplierForm({ initialValues, onSubmit, onCancel }: SupplierForm
                 <FormLabel>E-mail</FormLabel>
                 <FormControl>
                   <Input type="email" placeholder="vendas@fornecedor.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="telefone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Telefone</FormLabel>
-                <FormControl>
-                  <Input placeholder="(11) 3456-7890" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
