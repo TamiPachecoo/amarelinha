@@ -49,7 +49,7 @@ export function AlertsPanel() {
         {alerts.length === 0 ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <CheckCircle2 className="size-4 text-brand-green" />
-            Tudo em dia por aqui.
+            Tudo certo por aqui! 🎉
           </p>
         ) : (
           <ul className="space-y-2">

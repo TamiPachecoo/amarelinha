@@ -7,6 +7,7 @@ import { ClienteDetailPage } from "@/pages/ClienteDetailPage"
 import { ClientesPage } from "@/pages/ClientesPage"
 import { CollectionsPage } from "@/pages/CollectionsPage"
 import { DashboardPage } from "@/pages/DashboardPage"
+import { FinanceiroPage } from "@/pages/FinanceiroPage"
 import { InventoryPage } from "@/pages/InventoryPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { MalinhaDetailPage } from "@/pages/MalinhaDetailPage"
@@ -38,6 +39,7 @@ function App() {
           <Route path="/malinha-amarelinha/:malinhaId" element={<MalinhaDetailPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
           <Route path="/clientes/:clienteId" element={<ClienteDetailPage />} />
+          <Route path="/financeiro" element={<FinanceiroPage />} />
           <Route path="/relatorios" element={<ReportsPage />} />
           <Route path="/configuracoes" element={<SettingsPage />} />
         </Route>

@@ -38,7 +38,6 @@ export function ClientesPage() {
     return customers.filter(
       (customer) =>
         customer.nomeCompleto.toLowerCase().includes(term) ||
-        customer.telefone.includes(term) ||
         customer.whatsapp.includes(term) ||
         customer.email.toLowerCase().includes(term)
     )
@@ -60,7 +59,7 @@ export function ClientesPage() {
       </div>
 
       <Input
-        placeholder="Buscar por nome, telefone ou e-mail..."
+        placeholder="Buscar por nome, WhatsApp ou e-mail..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="mb-4 sm:max-w-xs"

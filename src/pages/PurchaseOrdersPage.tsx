@@ -34,6 +34,11 @@ import type { PurchaseOrder, PurchaseOrderStatus } from "@/features/purchasing/t
 import { purchaseOrderStatusLabel } from "@/features/purchasing/types"
 import { itemTotal, orderTotal } from "@/features/purchasing/utils"
 import { useSuppliersStore } from "@/features/suppliers/store/suppliersStore"
+import { RegisterOrderPaymentForm } from "@/features/financial/components/RegisterOrderPaymentForm"
+import { usePaymentsStore } from "@/features/financial/store/paymentsStore"
+import { formaPagamentoFornecedorLabel } from "@/features/financial/types"
+import { isVencidoNaoPago } from "@/features/financial/utils"
+import { Switch } from "@/components/ui/switch"
 
 const statusVariant: Record<PurchaseOrderStatus, "default" | "outline" | "secondary" | "destructive"> = {
   rascunho: "outline",
@@ -55,6 +60,9 @@ export function PurchaseOrdersPage() {
   const updateStatus = usePurchaseOrdersStore((state) => state.updateStatus)
   const suppliers = useSuppliersStore((state) => state.suppliers)
   const collections = useCollectionsStore((state) => state.collections)
+  const payments = usePaymentsStore((state) => state.payments)
+  const addPayments = usePaymentsStore((state) => state.addPayments)
+  const markPaid = usePaymentsStore((state) => state.markPaid)
 
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [viewing, setViewing] = useState<PurchaseOrder | null>(null)
@@ -205,10 +213,6 @@ export function PurchaseOrdersPage() {
                   <span>{formatBRL(viewing.frete)}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Impostos</span>
-                  <span>{formatBRL(viewing.impostos)}</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
                   <span>Desconto</span>
                   <span>-{formatBRL(viewing.desconto)}</span>
                 </div>
@@ -223,6 +227,65 @@ export function PurchaseOrdersPage() {
                   {viewing.observacoes}
                 </p>
               )}
+
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-foreground">Pagamento ao Fornecedor</p>
+                {payments.filter((p) => p.purchaseOrderId === viewing.id).length === 0 ? (
+                  <RegisterOrderPaymentForm
+                    valorTotal={orderTotal(viewing)}
+                    dataPedido={viewing.dataPedido}
+                    onSubmit={(plan) =>
+                      addPayments(plan.map((p) => ({ ...p, purchaseOrderId: viewing.id, pago: false })))
+                    }
+                  />
+                ) : (
+                  <div className="rounded-lg border border-border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Parcela</TableHead>
+                          <TableHead>Forma</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                          <TableHead className="text-right">Pago</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {payments
+                          .filter((p) => p.purchaseOrderId === viewing.id)
+                          .sort((a, b) => a.numeroParcela - b.numeroParcela)
+                          .map((payment) => (
+                            <TableRow key={payment.id}>
+                              <TableCell>
+                                {payment.numeroParcela}/{payment.totalParcelas}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {formaPagamentoFornecedorLabel[payment.formaPagamento]}
+                              </TableCell>
+                              <TableCell
+                                className={
+                                  isVencidoNaoPago(payment)
+                                    ? "font-medium text-destructive"
+                                    : "text-muted-foreground"
+                                }
+                              >
+                                {payment.dataVencimento}
+                              </TableCell>
+                              <TableCell className="text-right">{formatBRL(payment.valor)}</TableCell>
+                              <TableCell className="text-right">
+                                <Switch
+                                  checked={payment.pago}
+                                  onCheckedChange={(checked) => markPaid(payment.id, checked)}
+                                  className="ml-auto"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </DialogContent>

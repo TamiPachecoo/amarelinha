@@ -31,3 +31,10 @@ export function margemPercentual(precoVenda: number, custo: number): number | nu
 export function investimentoEstoque(product: Product): number {
   return product.variants.reduce((sum, variant) => sum + variant.quantidade * variant.custo, 0)
 }
+
+/** Menor e maior custo entre as variantes do produto (null quando não há variantes). */
+export function custoRange(product: Product): { min: number; max: number } | null {
+  if (product.variants.length === 0) return null
+  const custos = product.variants.map((variant) => variant.custo)
+  return { min: Math.min(...custos), max: Math.max(...custos) }
+}

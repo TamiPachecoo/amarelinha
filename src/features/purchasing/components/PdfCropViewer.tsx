@@ -9,6 +9,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
 interface PdfCropViewerProps {
   pdfUrl: string
+  isImage?: boolean
   onCrop: (dataUrl: string) => void
 }
 
@@ -19,7 +20,7 @@ interface Rect {
   height: number
 }
 
-export function PdfCropViewer({ pdfUrl, onCrop }: PdfCropViewerProps) {
+export function PdfCropViewer({ pdfUrl, isImage = false, onCrop }: PdfCropViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const scrollWrapperRef = useRef<HTMLDivElement>(null)
@@ -42,7 +43,28 @@ export function PdfCropViewer({ pdfUrl, onCrop }: PdfCropViewerProps) {
     if (wrapperWidth === 0) return
     let cancelled = false
 
-    async function renderPage() {
+    async function renderImage() {
+      setIsLoading(true)
+      const img = new Image()
+      img.src = pdfUrl
+      await img.decode()
+      if (cancelled) return
+      setNumPages(1)
+
+      const scale = Math.min(2.5, Math.max(0.4, (wrapperWidth - 16) / img.naturalWidth))
+      const canvas = canvasRef.current
+      if (!canvas || cancelled) return
+
+      canvas.width = img.naturalWidth * scale
+      canvas.height = img.naturalHeight * scale
+      const context = canvas.getContext("2d")
+      if (!context) return
+
+      context.drawImage(img, 0, 0, canvas.width, canvas.height)
+      if (!cancelled) setIsLoading(false)
+    }
+
+    async function renderPdfPage() {
       setIsLoading(true)
       const doc = await pdfjsLib.getDocument({ url: pdfUrl }).promise
       if (cancelled) return
@@ -66,12 +88,16 @@ export function PdfCropViewer({ pdfUrl, onCrop }: PdfCropViewerProps) {
       if (!cancelled) setIsLoading(false)
     }
 
-    renderPage()
+    if (isImage) {
+      renderImage()
+    } else {
+      renderPdfPage()
+    }
     setSelection(null)
     return () => {
       cancelled = true
     }
-  }, [pdfUrl, pageNumber, wrapperWidth])
+  }, [pdfUrl, pageNumber, wrapperWidth, isImage])
 
   function getRelativePos(e: React.MouseEvent) {
     const rect = containerRef.current!.getBoundingClientRect()
@@ -131,27 +157,31 @@ export function PdfCropViewer({ pdfUrl, onCrop }: PdfCropViewerProps) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon"
-            disabled={pageNumber <= 1}
-            onClick={() => setPageNumber((p) => p - 1)}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="min-w-[90px] text-center text-sm text-muted-foreground">
-            Página {pageNumber} de {numPages || "…"}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            disabled={pageNumber >= numPages}
-            onClick={() => setPageNumber((p) => p + 1)}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
+        {isImage ? (
+          <div />
+        ) : (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={pageNumber <= 1}
+              onClick={() => setPageNumber((p) => p - 1)}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <span className="min-w-[90px] text-center text-sm text-muted-foreground">
+              Página {pageNumber} de {numPages || "…"}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={pageNumber >= numPages}
+              onClick={() => setPageNumber((p) => p + 1)}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        )}
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Crop className="size-3.5" />
           Arraste sobre a foto do produto

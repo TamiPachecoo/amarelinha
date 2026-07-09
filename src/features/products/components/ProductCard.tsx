@@ -4,7 +4,21 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import type { Product } from "@/features/products/types"
-import { formatBRL, semEstoque, temEstoqueBaixo, totalQuantidade } from "@/features/products/utils"
+import {
+  custoRange,
+  formatBRL,
+  semEstoque,
+  temEstoqueBaixo,
+  totalQuantidade,
+} from "@/features/products/utils"
+
+function formatCustoRange(product: Product): string {
+  const range = custoRange(product)
+  if (!range) return "—"
+  return range.min === range.max
+    ? formatBRL(range.min)
+    : `${formatBRL(range.min)} – ${formatBRL(range.max)}`
+}
 
 function getStockBadge(product: Product) {
   if (semEstoque(product)) {
@@ -51,6 +65,7 @@ export function ProductCard({ product, onView }: ProductCardProps) {
             {quantidade} {quantidade === 1 ? "peça" : "peças"}
           </span>
         </div>
+        <p className="text-xs text-muted-foreground">Custo: {formatCustoRange(product)}</p>
       </CardContent>
 
       <CardFooter className="px-4 pt-3 pb-4">

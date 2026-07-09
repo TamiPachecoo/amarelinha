@@ -60,7 +60,6 @@ export function PurchaseOrderForm({ onSubmit, onCancel }: PurchaseOrderFormProps
       notaFiscal: "",
       frete: 0,
       desconto: 0,
-      impostos: 0,
       observacoes: "",
       itens: [emptyItem],
     },
@@ -346,32 +345,13 @@ export function PurchaseOrderForm({ onSubmit, onCancel }: PurchaseOrderFormProps
 
         <Separator />
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="frete"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Frete</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    {...field}
-                    value={field.value as string | number}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="impostos"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Impostos</FormLabel>
                 <FormControl>
                   <Input
                     type="number"

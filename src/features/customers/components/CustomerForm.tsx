@@ -31,7 +31,6 @@ export function CustomerForm({ initialValues, onSubmit, onCancel }: CustomerForm
     resolver: zodResolver(customerSchema),
     defaultValues: initialValues ?? {
       nomeCompleto: "",
-      telefone: "",
       whatsapp: "",
       email: "",
       instagram: "",
@@ -76,19 +75,6 @@ export function CustomerForm({ initialValues, onSubmit, onCancel }: CustomerForm
         />
 
         <div className="grid grid-cols-2 gap-3">
-          <FormField
-            control={form.control}
-            name="telefone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Telefone</FormLabel>
-                <FormControl>
-                  <Input placeholder="(31) 3222-1010" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
           <FormField
             control={form.control}
             name="whatsapp"

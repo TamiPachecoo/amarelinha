@@ -9,7 +9,7 @@ export function orderSubtotal(order: PurchaseOrder): number {
 }
 
 export function orderTotal(order: PurchaseOrder): number {
-  return orderSubtotal(order) + order.frete + order.impostos - order.desconto
+  return orderSubtotal(order) + order.frete - order.desconto
 }
 
 export function isFullyReceived(order: PurchaseOrder): boolean {

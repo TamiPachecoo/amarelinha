@@ -21,7 +21,6 @@ export const purchaseOrderSchema = z.object({
   notaFiscal: z.string().optional(),
   frete: z.coerce.number().min(0, "Informe um valor válido"),
   desconto: z.coerce.number().min(0, "Informe um valor válido"),
-  impostos: z.coerce.number().min(0, "Informe um valor válido"),
   observacoes: z.string().optional(),
   itens: z.array(purchaseOrderItemSchema).min(1, "Adicione ao menos um item"),
 })

@@ -167,7 +167,7 @@ export function CollectionForm({ initialValues, onSubmit, onCancel }: Collection
 
         <div className="space-y-2">
           <label className="text-sm font-medium leading-none" htmlFor="catalogo-pdf-input">
-            Catálogo PDF (opcional)
+            Catálogo (PDF ou imagem, opcional)
           </label>
           <label
             htmlFor="catalogo-pdf-input"
@@ -181,14 +181,14 @@ export function CollectionForm({ initialValues, onSubmit, onCancel }: Collection
             ) : (
               <>
                 <Upload className="size-5 shrink-0" />
-                <span>Clique para escolher um arquivo PDF do computador</span>
+                <span>Clique para escolher um PDF ou uma imagem do computador</span>
               </>
             )}
           </label>
           <input
             id="catalogo-pdf-input"
             type="file"
-            accept="application/pdf"
+            accept="application/pdf,image/*"
             className="hidden"
             onChange={(e) => setCatalogoPdf(e.target.files?.[0] ?? null)}
           />

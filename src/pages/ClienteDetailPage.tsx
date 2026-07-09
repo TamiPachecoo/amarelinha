@@ -178,7 +178,6 @@ export function ClienteDetailPage() {
             </Button>
           </CardHeader>
           <CardContent className="space-y-1 text-sm">
-            <p className="text-muted-foreground">Telefone: {customer.telefone}</p>
             <p className="text-muted-foreground">WhatsApp: {customer.whatsapp}</p>
             <p className="text-muted-foreground">E-mail: {customer.email || "—"}</p>
             <p className="text-muted-foreground">Instagram: {customer.instagram || "—"}</p>

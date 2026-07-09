@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   Truck,
   Users,
+  Wallet,
   Warehouse,
 } from "lucide-react"
 
@@ -58,6 +59,7 @@ const navGroups = [
   {
     label: "Gestão",
     items: [
+      { title: "Financeiro", url: "/financeiro", icon: Wallet },
       { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
       { title: "Configurações", url: "/configuracoes", icon: Settings },
     ],

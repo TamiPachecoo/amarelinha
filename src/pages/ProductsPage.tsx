@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Package, Plus } from "lucide-react"
+import { Package, Plus, Trash2 } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -18,15 +20,25 @@ import { useProductsStore } from "@/features/products/store/productsStore"
 import type { ProductFormValues } from "@/features/products/schemas/productSchema"
 import type { Product } from "@/features/products/types"
 import { productSourceTypeLabel } from "@/features/products/types"
-import { formatBRL, totalQuantidade } from "@/features/products/utils"
+import { custoRange, formatBRL, totalQuantidade } from "@/features/products/utils"
 import { usePurchaseOrdersStore } from "@/features/purchasing/store/purchaseOrdersStore"
 import { useSuppliersStore } from "@/features/suppliers/store/suppliersStore"
+
+function formatCustoRange(product: Product): string {
+  const range = custoRange(product)
+  if (!range) return "—"
+  return range.min === range.max
+    ? formatBRL(range.min)
+    : `${formatBRL(range.min)} – ${formatBRL(range.max)}`
+}
 
 export function ProductsPage() {
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null)
   const products = useProductsStore((state) => state.products)
   const addProduct = useProductsStore((state) => state.addProduct)
+  const deleteProduct = useProductsStore((state) => state.deleteProduct)
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null)
   const locations = useLocationsStore((state) => state.locations)
   const suppliers = useSuppliersStore((state) => state.suppliers)
   const collections = useCollectionsStore((state) => state.collections)
@@ -35,6 +47,13 @@ export function ProductsPage() {
   function handleAddProduct(values: ProductFormValues) {
     addProduct(values)
     setDialogOpen(false)
+  }
+
+  function handleConfirmDelete() {
+    if (!deletingProduct) return
+    deleteProduct(deletingProduct.id)
+    setDeletingProduct(null)
+    setViewingProduct(null)
   }
 
   function locationName(locationId: string) {
@@ -85,7 +104,17 @@ export function ProductsPage() {
           {viewingProduct && (
             <>
               <DialogHeader>
-                <DialogTitle>{viewingProduct.nome}</DialogTitle>
+                <DialogTitle className="flex items-center justify-between gap-2">
+                  {viewingProduct.nome}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeletingProduct(viewingProduct)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </DialogTitle>
               </DialogHeader>
               {viewingProduct.foto && (
                 <img
@@ -101,6 +130,8 @@ export function ProductsPage() {
                 <dd className="text-right font-medium">{viewingProduct.categoria}</dd>
                 <dt className="text-muted-foreground">Marca</dt>
                 <dd className="text-right font-medium">{viewingProduct.marca}</dd>
+                <dt className="text-muted-foreground">Preço de Custo</dt>
+                <dd className="text-right font-medium">{formatCustoRange(viewingProduct)}</dd>
                 <dt className="text-muted-foreground">Preço de Venda</dt>
                 <dd className="text-right font-medium">
                   {formatBRL(viewingProduct.precoVenda)}
@@ -151,6 +182,29 @@ export function ProductsPage() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deletingProduct !== null}
+        onOpenChange={(open) => !open && setDeletingProduct(null)}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Excluir produto?</DialogTitle>
+            <DialogDescription>
+              Isso vai remover "{deletingProduct?.nome}" e todas as suas variantes do estoque
+              permanentemente. Essa ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingProduct(null)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Excluir
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

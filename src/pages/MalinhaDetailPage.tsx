@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link, Navigate, useParams } from "react-router-dom"
-import { ArrowLeft, Send, Trash2 } from "lucide-react"
+import { ArrowLeft, FileDown, Send, Trash2 } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Badge } from "@/components/ui/badge"
@@ -27,6 +27,7 @@ import { AddMalinhaItemForm } from "@/features/malinhas/components/AddMalinhaIte
 import type { AddMalinhaItemFormValues } from "@/features/malinhas/schemas/malinhaSchema"
 import { useMalinhasStore } from "@/features/malinhas/store/malinhasStore"
 import { malinhaStatusLabel } from "@/features/malinhas/types"
+import { exportMalinhaToPdf } from "@/features/malinhas/malinhaExport"
 import { useProductsStore } from "@/features/products/store/productsStore"
 import { formatBRL } from "@/features/products/utils"
 import { useSalesStore } from "@/features/sales/store/salesStore"
@@ -74,6 +75,14 @@ export function MalinhaDetailPage() {
     fecharMalinha(malinha!.id, { vendidos, formaPagamento })
   }
 
+  function handleExport() {
+    exportMalinhaToPdf(malinha!, malinha!.itens, {
+      clienteNome: cliente?.nomeCompleto ?? "Cliente",
+      findProduct,
+      findVariant,
+    })
+  }
+
   const totalVendido = malinha.itens.reduce((sum, item) => {
     const vendida = vendidos[item.id] ?? 0
     const product = findProduct(item.productId)
@@ -91,14 +100,25 @@ export function MalinhaDetailPage() {
             Malinha Amarelinha
           </Link>
         </Button>
-        <div className="flex items-center gap-3">
-          <PageHeader
-            title={`${malinha.numero} · ${cliente?.nomeCompleto ?? "Cliente"}`}
-            description={
-              malinha.observacoes || "Showroom móvel enviado para a cliente experimentar em casa"
-            }
-          />
-          <Badge className="mt-1">{malinhaStatusLabel[malinha.status]}</Badge>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <PageHeader
+              title={`${malinha.numero} · ${cliente?.nomeCompleto ?? "Cliente"}`}
+              description={
+                malinha.observacoes || "Showroom móvel enviado para a cliente experimentar em casa"
+              }
+            />
+            <Badge className="mt-1">{malinhaStatusLabel[malinha.status]}</Badge>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={malinha.itens.length === 0}
+            onClick={handleExport}
+          >
+            <FileDown className="size-4" />
+            Exportar / Imprimir
+          </Button>
         </div>
       </div>
 

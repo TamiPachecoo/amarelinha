@@ -12,7 +12,6 @@ export const addressSchema = z.object({
 
 export const customerSchema = z.object({
   nomeCompleto: z.string().min(2, "Informe o nome completo"),
-  telefone: z.string().min(8, "Informe um telefone válido"),
   whatsapp: z.string().min(8, "Informe um WhatsApp válido"),
   email: z.string().email("E-mail inválido").or(z.literal("")),
   instagram: z.string().optional(),

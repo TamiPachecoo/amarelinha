@@ -1,45 +1,39 @@
 import { create } from "zustand"
 import type { Sale } from "@/features/sales/types"
 import type { SaleFormValues } from "@/features/sales/schemas/saleSchema"
-import { CUSTOMER_SEED_IDS } from "@/features/customers/store/customersStore"
-import { PRODUCT_SEED_IDS, useProductsStore } from "@/features/products/store/productsStore"
+import { useProductsStore } from "@/features/products/store/productsStore"
 import { useMovementsStore } from "@/features/inventory/store/movementsStore"
+import { supabase } from "@/services/supabase"
 
-const seedSales: Sale[] = [
-  {
-    id: crypto.randomUUID(),
-    clienteId: CUSTOMER_SEED_IDS.ana,
-    productId: PRODUCT_SEED_IDS.vestidoFloral.productId,
-    variantId: PRODUCT_SEED_IDS.vestidoFloral.variantId,
-    quantidade: 1,
-    precoUnitario: 129.9,
-    total: 129.9,
-    formaPagamento: "pix",
-    data: "2026-06-02",
-  },
-  {
-    id: crypto.randomUUID(),
-    clienteId: CUSTOMER_SEED_IDS.ana,
-    productId: PRODUCT_SEED_IDS.conjuntoMoletom.productId,
-    variantId: PRODUCT_SEED_IDS.conjuntoMoletom.variantId,
-    quantidade: 1,
-    precoUnitario: 89.9,
-    total: 89.9,
-    formaPagamento: "conta_cliente",
-    data: "2026-06-20",
-  },
-  {
-    id: crypto.randomUUID(),
-    clienteId: CUSTOMER_SEED_IDS.bruna,
-    productId: PRODUCT_SEED_IDS.vestidoFloral.productId,
-    variantId: PRODUCT_SEED_IDS.vestidoFloral.variantId,
-    quantidade: 2,
-    precoUnitario: 129.9,
-    total: 259.8,
-    formaPagamento: "cartao",
-    data: "2026-05-15",
-  },
-]
+function fromRow(row: Record<string, unknown>): Sale {
+  return {
+    id: row.id as string,
+    clienteId: row.cliente_id as string,
+    productId: row.product_id as string,
+    variantId: row.variant_id as string,
+    quantidade: row.quantidade as number,
+    precoUnitario: Number(row.preco_unitario),
+    total: Number(row.total),
+    formaPagamento: row.forma_pagamento as Sale["formaPagamento"],
+    data: row.data as string,
+    malinhaId: (row.malinha_id as string) ?? undefined,
+  }
+}
+
+function toRow(sale: Sale) {
+  return {
+    id: sale.id,
+    cliente_id: sale.clienteId,
+    product_id: sale.productId,
+    variant_id: sale.variantId,
+    quantidade: sale.quantidade,
+    preco_unitario: sale.precoUnitario,
+    total: sale.total,
+    forma_pagamento: sale.formaPagamento,
+    data: sale.data,
+    malinha_id: sale.malinhaId || null,
+  }
+}
 
 interface RegisterSaleInput extends SaleFormValues {
   precoUnitario: number
@@ -81,6 +75,7 @@ function buildSale(input: {
 
 interface SalesState {
   sales: Sale[]
+  fetchAll: () => Promise<void>
   registerSale: (input: RegisterSaleInput) => void
   /** Usada pelo fechamento da Malinha Amarelinha: registra a venda sem
    *  mexer no estoque, porque a quantidade já saiu da loja no envio da
@@ -89,10 +84,22 @@ interface SalesState {
 }
 
 export const useSalesStore = create<SalesState>((set) => ({
-  sales: seedSales,
+  sales: [],
+  fetchAll: async () => {
+    const { data, error } = await supabase.from("sales").select("*").order("data", { ascending: false })
+    if (error) {
+      console.error("Failed to fetch sales", error)
+      return
+    }
+    set({ sales: (data ?? []).map(fromRow) })
+  },
   registerSale: (input) => {
     const sale = buildSale(input)
     set((state) => ({ sales: [sale, ...state.sales] }))
+    supabase
+      .from("sales")
+      .insert(toRow(sale))
+      .then(({ error }) => error && console.error("Failed to insert sale", error))
 
     useProductsStore.getState().adjustVariantQuantity(input.variantId, -input.quantidade)
     useMovementsStore.getState().addMovement({
@@ -106,6 +113,10 @@ export const useSalesStore = create<SalesState>((set) => ({
   recordSaleWithoutStockChange: (input) => {
     const sale = buildSale(input)
     set((state) => ({ sales: [sale, ...state.sales] }))
+    supabase
+      .from("sales")
+      .insert(toRow(sale))
+      .then(({ error }) => error && console.error("Failed to insert sale", error))
 
     useMovementsStore.getState().addMovement({
       variantId: input.variantId,

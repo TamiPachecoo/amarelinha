@@ -19,10 +19,10 @@ export function PurchasingKpiCards() {
   const fornecedoresAtivos = suppliers.filter((s) => s.ativo).length
 
   const cards = [
-    { title: "Pedidos em Andamento", value: openOrders.length, icon: ClipboardList },
-    { title: "Aguardando Recebimento", value: awaitingReceiving.length, icon: PackageCheck },
-    { title: "Valor em Pedidos Abertos", value: formatBRL(valorEmAberto), icon: Wallet },
-    { title: "Fornecedores Ativos", value: fornecedoresAtivos, icon: Truck },
+    { title: "Pedidos em Andamento", value: openOrders.length, icon: ClipboardList, accent: "pink" as const },
+    { title: "Aguardando Recebimento", value: awaitingReceiving.length, icon: PackageCheck, accent: "pink" as const },
+    { title: "Valor em Pedidos Abertos", value: formatBRL(valorEmAberto), icon: Wallet, accent: "pink" as const },
+    { title: "Fornecedores Ativos", value: fornecedoresAtivos, icon: Truck, accent: "pink" as const },
   ]
 
   return <KpiCardGrid cards={cards} />

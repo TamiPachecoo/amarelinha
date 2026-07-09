@@ -43,7 +43,6 @@ export interface PurchaseOrder {
   notaFiscal?: string
   frete: number
   desconto: number
-  impostos: number
   observacoes?: string
   itens: PurchaseOrderItem[]
   createdAt: string

@@ -30,7 +30,6 @@ export interface PaymentRecord {
 export interface Customer {
   id: string
   nomeCompleto: string
-  telefone: string
   whatsapp: string
   email: string
   instagram?: string

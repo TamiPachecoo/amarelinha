@@ -19,9 +19,14 @@ export function MalinhaKpiCards() {
   const saldoAReceber = customers.reduce((sum, customer) => sum + saldoDevedor(customer, sales), 0)
 
   const cards = [
-    { title: "Malinhas Ativas", value: malinhasAtivas, icon: Briefcase },
-    { title: "Produtos Fora da Loja", value: produtosForaDaLoja, icon: PackageOpen },
-    { title: "Saldo a Receber de Clientes", value: formatBRL(saldoAReceber), icon: Wallet },
+    { title: "Malinhas Ativas", value: malinhasAtivas, icon: Briefcase, accent: "green" as const },
+    { title: "Produtos Fora da Loja", value: produtosForaDaLoja, icon: PackageOpen, accent: "green" as const },
+    {
+      title: "Saldo a Receber de Clientes",
+      value: formatBRL(saldoAReceber),
+      icon: Wallet,
+      accent: "green" as const,
+    },
   ]
 
   return <KpiCardGrid cards={cards} />

@@ -5,7 +5,8 @@ import tailwindcss from "@tailwindcss/vite"
 import { VitePWA } from "vite-plugin-pwa"
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? "/amarelinha/" : "/",
   plugins: [
     react(),
     tailwindcss(),
@@ -19,7 +20,8 @@ export default defineConfig({
         theme_color: "#63cfef",
         background_color: "#863bff",
         display: "standalone",
-        start_url: "/",
+        start_url: "/amarelinha/",
+        scope: "/amarelinha/",
         icons: [
           {
             src: "pwa-192x192.png",
@@ -41,6 +43,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
     }),
   ],
@@ -49,4 +52,4 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-})
+}))
