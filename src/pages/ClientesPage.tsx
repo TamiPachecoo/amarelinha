@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table"
 import { CustomerForm } from "@/features/customers/components/CustomerForm"
 import type { CustomerFormValues } from "@/features/customers/schemas/customerSchema"
+import type { ChildFormValues } from "@/features/customers/schemas/childSchema"
 import { useCustomersStore } from "@/features/customers/store/customersStore"
 
 export function ClientesPage() {
@@ -43,8 +44,8 @@ export function ClientesPage() {
     )
   }, [customers, search])
 
-  function handleAdd(values: CustomerFormValues) {
-    addCustomer(values)
+  function handleAdd(values: CustomerFormValues, filhos: ChildFormValues[]) {
+    addCustomer(values, filhos)
     setDialogOpen(false)
   }
 

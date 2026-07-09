@@ -48,10 +48,19 @@ export function CollectionsPage() {
     return orders.filter((o) => o.collectionId === collectionId).length
   }
 
-  function handleAdd(values: CollectionFormValues, catalogoPdf: File | null) {
+  function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function handleAdd(values: CollectionFormValues, catalogoPdf: File | null) {
     addCollection({
       ...values,
-      catalogoPdfUrl: catalogoPdf ? URL.createObjectURL(catalogoPdf) : undefined,
+      catalogoPdfUrl: catalogoPdf ? await fileToDataUrl(catalogoPdf) : undefined,
       catalogoPdfNome: catalogoPdf?.name,
     })
     setDialogOpen(false)

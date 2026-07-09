@@ -1,5 +1,7 @@
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Plus, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -11,6 +13,13 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import type { Customer } from "@/features/customers/types"
@@ -19,11 +28,21 @@ import {
   type CustomerFormInput,
   type CustomerFormValues,
 } from "@/features/customers/schemas/customerSchema"
+import type { ChildFormValues } from "@/features/customers/schemas/childSchema"
 
 interface CustomerFormProps {
   initialValues?: Customer
-  onSubmit: (values: CustomerFormValues) => void
+  onSubmit: (values: CustomerFormValues, filhos: ChildFormValues[]) => void
   onCancel: () => void
+}
+
+const emptyChild: ChildFormValues = {
+  nome: "",
+  sexo: "feminino",
+  dataNascimento: "",
+  tamanhoRoupa: "",
+  numeracaoCalcado: "",
+  observacoes: "",
 }
 
 export function CustomerForm({ initialValues, onSubmit, onCancel }: CustomerFormProps) {
@@ -52,9 +71,24 @@ export function CustomerForm({ initialValues, onSubmit, onCancel }: CustomerForm
     },
   })
 
+  const [filhos, setFilhos] = useState<ChildFormValues[]>([])
+  const [novoFilho, setNovoFilho] = useState<ChildFormValues>(emptyChild)
+
+  function handleAddFilho() {
+    if (!novoFilho.nome || !novoFilho.dataNascimento) return
+    setFilhos((prev) => [...prev, novoFilho])
+    setNovoFilho(emptyChild)
+  }
+
+  function handleRemoveFilho(index: number) {
+    setFilhos((prev) => prev.filter((_, i) => i !== index))
+  }
+
   function handleSubmit(values: CustomerFormValues) {
-    onSubmit(values)
+    onSubmit(values, filhos)
     form.reset()
+    setFilhos([])
+    setNovoFilho(emptyChild)
   }
 
   return (
@@ -298,6 +332,75 @@ export function CustomerForm({ initialValues, onSubmit, onCancel }: CustomerForm
             </FormItem>
           )}
         />
+
+        {!initialValues && (
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-foreground">Filhos (opcional)</p>
+
+            {filhos.length > 0 && (
+              <ul className="space-y-1">
+                {filhos.map((filho, index) => (
+                  <li
+                    key={index}
+                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+                  >
+                    <span>
+                      {filho.nome} · {filho.sexo === "feminino" ? "Feminino" : "Masculino"} ·{" "}
+                      {filho.dataNascimento}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveFilho(index)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="grid grid-cols-2 gap-3 rounded-lg border border-dashed border-input p-3">
+              <Input
+                placeholder="Nome"
+                value={novoFilho.nome}
+                onChange={(e) => setNovoFilho((prev) => ({ ...prev, nome: e.target.value }))}
+              />
+              <Select
+                value={novoFilho.sexo}
+                onValueChange={(v) => setNovoFilho((prev) => ({ ...prev, sexo: v as "feminino" | "masculino" }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="feminino">Feminino</SelectItem>
+                  <SelectItem value="masculino">Masculino</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                type="date"
+                value={novoFilho.dataNascimento}
+                onChange={(e) => setNovoFilho((prev) => ({ ...prev, dataNascimento: e.target.value }))}
+              />
+              <Input
+                placeholder="Tamanho de roupa"
+                value={novoFilho.tamanhoRoupa}
+                onChange={(e) => setNovoFilho((prev) => ({ ...prev, tamanhoRoupa: e.target.value }))}
+              />
+              <Input
+                placeholder="Numeração do calçado"
+                value={novoFilho.numeracaoCalcado}
+                onChange={(e) => setNovoFilho((prev) => ({ ...prev, numeracaoCalcado: e.target.value }))}
+              />
+              <Button type="button" variant="outline" onClick={handleAddFilho}>
+                <Plus className="size-4" />
+                Adicionar Filho(a)
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end gap-3 pt-2">
           <Button type="button" variant="outline" onClick={onCancel}>

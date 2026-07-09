@@ -87,7 +87,7 @@ function customerToRow(customer: Customer) {
 interface CustomersState {
   customers: Customer[]
   fetchAll: () => Promise<void>
-  addCustomer: (input: CustomerFormValues) => void
+  addCustomer: (input: CustomerFormValues, filhos?: ChildFormValues[]) => void
   updateCustomer: (id: string, input: CustomerFormValues) => void
   addChild: (customerId: string, input: ChildFormValues) => void
   registerPayment: (customerId: string, payment: Omit<PaymentRecord, "id">) => void
@@ -130,19 +130,33 @@ export const useCustomersStore = create<CustomersState>((set) => ({
     }))
     set({ customers })
   },
-  addCustomer: (input) => {
+  addCustomer: (input, filhosInput = []) => {
+    const filhos: Child[] = filhosInput.map((filho) => ({ ...filho, id: crypto.randomUUID() }) as Child)
     const customer: Customer = {
       ...input,
       id: crypto.randomUUID(),
       clienteDesde: new Date().toISOString().slice(0, 10),
-      filhos: [],
+      filhos,
       historicoPagamentos: [],
     }
     set((state) => ({ customers: [customer, ...state.customers] }))
     supabase
       .from("customers")
       .insert(customerToRow(customer))
-      .then(({ error }) => error && console.error("Failed to insert customer", error))
+      .then(({ error }) => {
+        if (error) {
+          console.error("Failed to insert customer", error)
+          return
+        }
+        if (filhos.length > 0) {
+          supabase
+            .from("children")
+            .insert(filhos.map((filho) => childToRow(filho, customer.id)))
+            .then(({ error: childrenError }) => {
+              if (childrenError) console.error("Failed to insert children", childrenError)
+            })
+        }
+      })
   },
   updateCustomer: (id, input) => {
     set((state) => ({
