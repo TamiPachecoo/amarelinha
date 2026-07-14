@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import { Plus, ShoppingBag } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -55,6 +56,8 @@ const nextStatus: Partial<Record<PurchaseOrderStatus, PurchaseOrderStatus>> = {
 }
 
 export function PurchaseOrdersPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const orders = usePurchaseOrdersStore((state) => state.orders)
   const addOrder = usePurchaseOrdersStore((state) => state.addOrder)
   const updateStatus = usePurchaseOrdersStore((state) => state.updateStatus)
@@ -75,9 +78,21 @@ export function PurchaseOrdersPage() {
     return id ? collections.find((c) => c.id === id)?.nome ?? "—" : "—"
   }
 
+  useEffect(() => {
+    const openOrderId = (location.state as { openOrderId?: string } | null)?.openOrderId
+    if (!openOrderId) return
+    const order = orders.find((o) => o.id === openOrderId)
+    if (order) {
+      setViewing(order)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [location, orders, navigate])
+
   function handleAdd(values: PurchaseOrderFormValues) {
-    addOrder(values)
+    const newOrderId = addOrder(values)
     setDialogOpen(false)
+    const newOrder = usePurchaseOrdersStore.getState().orders.find((o) => o.id === newOrderId)
+    if (newOrder) setViewing(newOrder)
   }
 
   return (

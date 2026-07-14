@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Plus, Truck } from "lucide-react"
+import { Plus, Trash2, Truck } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -24,15 +26,30 @@ import { formatBRL } from "@/features/products/utils"
 export function SuppliersPage() {
   const suppliers = useSuppliersStore((state) => state.suppliers)
   const addSupplier = useSuppliersStore((state) => state.addSupplier)
+  const deleteSupplier = useSuppliersStore((state) => state.deleteSupplier)
   const collections = useCollectionsStore((state) => state.collections)
   const orders = usePurchaseOrdersStore((state) => state.orders)
 
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [viewing, setViewing] = useState<Supplier | null>(null)
+  const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   function handleAdd(values: SupplierFormValues) {
     addSupplier(values)
     setDialogOpen(false)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deletingSupplier) return
+    const error = await deleteSupplier(deletingSupplier.id)
+    if (error) {
+      setDeleteError(error)
+      return
+    }
+    setDeletingSupplier(null)
+    setDeleteError(null)
+    setViewing(null)
   }
 
   function statsFor(supplierId: string) {
@@ -124,7 +141,20 @@ export function SuppliersPage() {
           {viewing && (
             <>
               <DialogHeader>
-                <DialogTitle>{viewing.nome}</DialogTitle>
+                <DialogTitle className="flex items-center justify-between gap-2">
+                  {viewing.nome}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => {
+                      setDeletingSupplier(viewing)
+                      setDeleteError(null)
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </DialogTitle>
               </DialogHeader>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <dt className="text-muted-foreground">Contato</dt>
@@ -149,6 +179,35 @@ export function SuppliersPage() {
               )}
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deletingSupplier !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingSupplier(null)
+            setDeleteError(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Excluir fornecedor?</DialogTitle>
+            <DialogDescription>
+              Isso vai remover "{deletingSupplier?.nome}" permanentemente. Essa ação não pode ser
+              desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingSupplier(null)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Excluir
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

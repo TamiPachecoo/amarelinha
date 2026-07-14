@@ -89,7 +89,7 @@ let orderCounter = 0
 interface PurchaseOrdersState {
   orders: PurchaseOrder[]
   fetchAll: () => Promise<void>
-  addOrder: (input: PurchaseOrderFormValues, origem?: OrderOrigin) => void
+  addOrder: (input: PurchaseOrderFormValues, origem?: OrderOrigin) => string
   updateStatus: (id: string, status: PurchaseOrderStatus) => void
   receiveItem: (
     orderId: string,
@@ -162,6 +162,7 @@ export const usePurchaseOrdersStore = create<PurchaseOrdersState>((set, get) => 
             if (itemsError) console.error("Failed to insert purchase order items", itemsError)
           })
       })
+    return order.id
   },
   updateStatus: (id, status) => {
     set((state) => ({

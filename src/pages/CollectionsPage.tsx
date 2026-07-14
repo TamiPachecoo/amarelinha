@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { FileText, PackageSearch, Pencil, Plus, ShoppingBag } from "lucide-react"
+import { FileText, PackageSearch, Pencil, Plus, ShoppingBag, Trash2 } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -37,10 +39,13 @@ export function CollectionsPage() {
   const collections = useCollectionsStore((state) => state.collections)
   const addCollection = useCollectionsStore((state) => state.addCollection)
   const updateCollection = useCollectionsStore((state) => state.updateCollection)
+  const deleteCollection = useCollectionsStore((state) => state.deleteCollection)
   const suppliers = useSuppliersStore((state) => state.suppliers)
   const orders = usePurchaseOrdersStore((state) => state.orders)
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null)
+  const [deletingCollection, setDeletingCollection] = useState<Collection | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   function supplierName(supplierId: string) {
     return suppliers.find((s) => s.id === supplierId)?.nome ?? "—"
@@ -76,6 +81,17 @@ export function CollectionsPage() {
       catalogoPdfNome: catalogoPdf?.name ?? editingCollection.catalogoPdfNome,
     })
     setEditingCollection(null)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deletingCollection) return
+    const error = await deleteCollection(deletingCollection.id)
+    if (error) {
+      setDeleteError(error)
+      return
+    }
+    setDeletingCollection(null)
+    setDeleteError(null)
   }
 
   return (
@@ -152,6 +168,17 @@ export function CollectionsPage() {
                       <Button variant="ghost" size="sm" onClick={() => setEditingCollection(collection)}>
                         <Pencil className="size-4" />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setDeletingCollection(collection)
+                          setDeleteError(null)
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
                       {collection.catalogoPdfUrl && (
                         <Button variant="outline" size="sm" asChild>
                           <Link to={`/colecoes/${collection.id}/pedido-catalogo`}>
@@ -190,6 +217,35 @@ export function CollectionsPage() {
               onCancel={() => setEditingCollection(null)}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deletingCollection !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingCollection(null)
+            setDeleteError(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Excluir coleção?</DialogTitle>
+            <DialogDescription>
+              Isso vai remover "{deletingCollection?.nome}" permanentemente. Essa ação não pode ser
+              desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingCollection(null)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Excluir
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -42,6 +42,7 @@ interface SuppliersState {
   fetchAll: () => Promise<void>
   addSupplier: (input: SupplierFormValues) => void
   updateSupplier: (id: string, input: SupplierFormValues) => void
+  deleteSupplier: (id: string) => Promise<string | null>
 }
 
 export const useSuppliersStore = create<SuppliersState>((set) => ({
@@ -91,5 +92,17 @@ export const useSuppliersStore = create<SuppliersState>((set) => ({
       })
       .eq("id", id)
       .then(({ error }) => error && console.error("Failed to update supplier", error))
+  },
+  deleteSupplier: async (id) => {
+    const { error } = await supabase.from("suppliers").delete().eq("id", id)
+    if (error) {
+      if (error.code === "23503") {
+        return "Não é possível excluir: existem coleções ou pedidos de compra vinculados a este fornecedor."
+      }
+      console.error("Failed to delete supplier", error)
+      return "Não foi possível excluir o fornecedor."
+    }
+    set((state) => ({ suppliers: state.suppliers.filter((s) => s.id !== id) }))
+    return null
   },
 }))

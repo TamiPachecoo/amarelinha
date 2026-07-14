@@ -43,6 +43,7 @@ interface CollectionsState {
   fetchAll: () => Promise<void>
   addCollection: (input: NewCollectionInput) => void
   updateCollection: (id: string, input: NewCollectionInput) => void
+  deleteCollection: (id: string) => Promise<string | null>
 }
 
 export const useCollectionsStore = create<CollectionsState>((set) => ({
@@ -89,5 +90,17 @@ export const useCollectionsStore = create<CollectionsState>((set) => ({
       })
       .eq("id", id)
       .then(({ error }) => error && console.error("Failed to update collection", error))
+  },
+  deleteCollection: async (id) => {
+    const { error } = await supabase.from("collections").delete().eq("id", id)
+    if (error) {
+      if (error.code === "23503") {
+        return "Não é possível excluir: existem pedidos de compra vinculados a esta coleção."
+      }
+      console.error("Failed to delete collection", error)
+      return "Não foi possível excluir a coleção."
+    }
+    set((state) => ({ collections: state.collections.filter((c) => c.id !== id) }))
+    return null
   },
 }))

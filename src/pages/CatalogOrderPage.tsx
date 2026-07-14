@@ -103,7 +103,7 @@ export function CatalogOrderPage() {
 
   function handleCreateOrder() {
     if (!collection || itens.length === 0) return
-    addOrder(
+    const newOrderId = addOrder(
       {
         supplierId: collection.supplierId,
         collectionId: collection.id,
@@ -117,7 +117,7 @@ export function CatalogOrderPage() {
       },
       "pdf"
     )
-    navigate("/pedidos-compra")
+    navigate("/pedidos-compra", { state: { openOrderId: newOrderId } })
   }
 
   return (
