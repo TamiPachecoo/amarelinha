@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { useCustomersStore } from "@/features/customers/store/customersStore"
 import { useProductsStore } from "@/features/products/store/productsStore"
 import { totalQuantidade } from "@/features/products/utils"
@@ -48,24 +49,32 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
       variantId: "",
       quantidade: 1,
       formaPagamento: "pix",
+      emPromocao: false,
+      precoPromocional: undefined,
     },
   })
 
   const selectedProductId = form.watch("productId")
   const selectedProduct = products.find((p) => p.id === selectedProductId)
   const availableVariants = selectedProduct?.variants.filter((v) => v.quantidade > 0) ?? []
+  const emPromocao = form.watch("emPromocao")
 
   function handleSubmit(values: SaleFormValues) {
     const product = products.find((p) => p.id === values.productId)
     if (!product) return
 
-    registerSale({ ...values, precoUnitario: product.precoVenda })
+    const precoUnitario =
+      values.emPromocao && values.precoPromocional ? values.precoPromocional : product.precoVenda
+
+    registerSale({ ...values, precoUnitario })
     form.reset({
       clienteId: clienteId ?? "",
       productId: "",
       variantId: "",
       quantidade: 1,
       formaPagamento: "pix",
+      emPromocao: false,
+      precoPromocional: undefined,
     })
     onSuccess()
   }
@@ -206,8 +215,43 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
 
         {selectedProduct && (
           <p className="text-sm text-muted-foreground">
-            Preço unitário: {selectedProduct.precoVenda.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            Preço de tabela: {selectedProduct.precoVenda.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </p>
+        )}
+
+        <FormField
+          control={form.control}
+          name="emPromocao"
+          render={({ field }) => (
+            <FormItem className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+              <FormLabel className="mb-0">🏷️ Vendido em promoção</FormLabel>
+              <FormControl>
+                <Switch checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        {emPromocao && (
+          <FormField
+            control={form.control}
+            name="precoPromocional"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Preço Promocional</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Preço com desconto"
+                    {...field}
+                    value={field.value as string | number}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
 
         <div className="flex justify-end gap-3 pt-2">

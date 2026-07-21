@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -61,6 +63,7 @@ export function PurchaseOrdersPage() {
   const orders = usePurchaseOrdersStore((state) => state.orders)
   const addOrder = usePurchaseOrdersStore((state) => state.addOrder)
   const updateStatus = usePurchaseOrdersStore((state) => state.updateStatus)
+  const deleteOrder = usePurchaseOrdersStore((state) => state.deleteOrder)
   const suppliers = useSuppliersStore((state) => state.suppliers)
   const collections = useCollectionsStore((state) => state.collections)
   const payments = usePaymentsStore((state) => state.payments)
@@ -69,6 +72,8 @@ export function PurchaseOrdersPage() {
 
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [viewing, setViewing] = useState<PurchaseOrder | null>(null)
+  const [deletingOrder, setDeletingOrder] = useState<PurchaseOrder | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   function supplierName(id: string) {
     return suppliers.find((s) => s.id === id)?.nome ?? "—"
@@ -93,6 +98,18 @@ export function PurchaseOrdersPage() {
     setDialogOpen(false)
     const newOrder = usePurchaseOrdersStore.getState().orders.find((o) => o.id === newOrderId)
     if (newOrder) setViewing(newOrder)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deletingOrder) return
+    const error = await deleteOrder(deletingOrder.id)
+    if (error) {
+      setDeleteError(error)
+      return
+    }
+    setDeletingOrder(null)
+    setDeleteError(null)
+    setViewing(null)
   }
 
   return (
@@ -144,28 +161,37 @@ export function PurchaseOrdersPage() {
                   </TableCell>
                   <TableCell className="text-right font-medium">{formatBRL(orderTotal(order))}</TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    {order.status !== "recebido" && order.status !== "cancelado" && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">Ações</Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {nextStatus[order.status] && (
-                            <DropdownMenuItem
-                              onClick={() => updateStatus(order.id, nextStatus[order.status]!)}
-                            >
-                              Avançar para {purchaseOrderStatusLabel[nextStatus[order.status]!]}
-                            </DropdownMenuItem>
-                          )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">Ações</Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {nextStatus[order.status] && (
+                          <DropdownMenuItem
+                            onClick={() => updateStatus(order.id, nextStatus[order.status]!)}
+                          >
+                            Avançar para {purchaseOrderStatusLabel[nextStatus[order.status]!]}
+                          </DropdownMenuItem>
+                        )}
+                        {order.status !== "recebido" && order.status !== "cancelado" && (
                           <DropdownMenuItem
                             variant="destructive"
                             onClick={() => updateStatus(order.id, "cancelado")}
                           >
                             Cancelar Pedido
                           </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                        )}
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => {
+                            setDeletingOrder(order)
+                            setDeleteError(null)
+                          }}
+                        >
+                          Excluir Pedido
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
@@ -303,6 +329,35 @@ export function PurchaseOrdersPage() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deletingOrder !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingOrder(null)
+            setDeleteError(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Excluir pedido?</DialogTitle>
+            <DialogDescription>
+              Isso vai remover o pedido "{deletingOrder?.numero}" e seus pagamentos registrados
+              permanentemente. Essa ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingOrder(null)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Excluir
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

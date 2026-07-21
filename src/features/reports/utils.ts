@@ -2,6 +2,7 @@ import { differenceInDays, endOfMonth, format, parseISO, startOfMonth, subMonths
 import { ptBR } from "date-fns/locale"
 import type { Product } from "@/features/products/types"
 import type { Sale } from "@/features/sales/types"
+import type { Customer } from "@/features/customers/types"
 import type { PurchaseOrderPayment } from "@/features/financial/types"
 import { despesaNoPeriodo, receitaNoPeriodo } from "@/features/financial/utils"
 import { investimentoEstoque, totalQuantidade, valorEstoque } from "@/features/products/utils"
@@ -111,4 +112,48 @@ export const giroStatusLabel: Record<GiroStatus, string> = {
   parado: "Parado",
   lento: "Giro Lento",
   girando: "Girando Bem",
+}
+
+export interface PromoSale {
+  saleId: string
+  productId: string
+  productNome: string
+  clienteNome: string
+  data: string
+  quantidade: number
+  precoOriginal: number
+  precoVendido: number
+  descontoPercentual: number
+  total: number
+}
+
+export function produtosParados(products: Product[], sales: Sale[], minDias = 60): ProductLifespan[] {
+  return productLifespanReport(products, sales).filter(
+    (row) => row.diasEmEstoque >= minDias && row.quantidadeAtual > 0
+  )
+}
+
+export function promoSalesReport(sales: Sale[], products: Product[], customers: Customer[]): PromoSale[] {
+  return sales
+    .filter((sale) => sale.emPromocao)
+    .map((sale) => {
+      const product = products.find((p) => p.id === sale.productId)
+      const customer = customers.find((c) => c.id === sale.clienteId)
+      const precoOriginal = product?.precoVenda ?? sale.precoUnitario
+      const descontoPercentual =
+        precoOriginal > 0 ? ((precoOriginal - sale.precoUnitario) / precoOriginal) * 100 : 0
+      return {
+        saleId: sale.id,
+        productId: sale.productId,
+        productNome: product?.nome ?? "—",
+        clienteNome: customer?.nomeCompleto ?? "—",
+        data: sale.data,
+        quantidade: sale.quantidade,
+        precoOriginal,
+        precoVendido: sale.precoUnitario,
+        descontoPercentual,
+        total: sale.total,
+      }
+    })
+    .sort((a, b) => (a.data < b.data ? 1 : -1))
 }

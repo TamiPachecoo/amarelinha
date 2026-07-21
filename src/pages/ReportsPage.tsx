@@ -35,6 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSalesStore } from "@/features/sales/store/salesStore"
 import { usePaymentsStore } from "@/features/financial/store/paymentsStore"
 import { useProductsStore } from "@/features/products/store/productsStore"
+import { useCustomersStore } from "@/features/customers/store/customersStore"
 import {
   formatBRL,
   semEstoque,
@@ -46,6 +47,7 @@ import {
   giroStatusLabel,
   monthlyFinancialSeries,
   productLifespanReport,
+  promoSalesReport,
   stockByCategoria,
   type GiroStatus,
 } from "@/features/reports/utils"
@@ -58,20 +60,43 @@ const giroBadgeClass: Record<GiroStatus, string> = {
 
 const ALL = "todos"
 
+const MONTH_OPTIONS = [3, 6, 12, 24]
+
 export function ReportsPage() {
   const sales = useSalesStore((state) => state.sales)
   const payments = usePaymentsStore((state) => state.payments)
   const products = useProductsStore((state) => state.products)
+  const customers = useCustomersStore((state) => state.customers)
 
   const [lifespanSearch, setLifespanSearch] = useState("")
   const [lifespanStatus, setLifespanStatus] = useState<typeof ALL | GiroStatus>(ALL)
+  const [financialMonths, setFinancialMonths] = useState(12)
+  const [stockCategoria, setStockCategoria] = useState(ALL)
+  const [promoSearch, setPromoSearch] = useState("")
 
-  const financialSeries = useMemo(() => monthlyFinancialSeries(sales, payments, 12), [sales, payments])
-  const totalReceita12m = financialSeries.reduce((sum, m) => sum + m.receita, 0)
-  const totalDespesas12m = financialSeries.reduce((sum, m) => sum + m.despesas, 0)
+  const financialSeries = useMemo(
+    () => monthlyFinancialSeries(sales, payments, financialMonths),
+    [sales, payments, financialMonths]
+  )
+  const totalReceitaPeriodo = financialSeries.reduce((sum, m) => sum + m.receita, 0)
+  const totalDespesasPeriodo = financialSeries.reduce((sum, m) => sum + m.despesas, 0)
 
   const categoriaStock = useMemo(() => stockByCategoria(products), [products])
+  const filteredCategoriaStock = useMemo(
+    () => (stockCategoria === ALL ? categoriaStock : categoriaStock.filter((c) => c.categoria === stockCategoria)),
+    [categoriaStock, stockCategoria]
+  )
   const lifespan = useMemo(() => productLifespanReport(products, sales), [products, sales])
+  const promoSales = useMemo(() => promoSalesReport(sales, products, customers), [sales, products, customers])
+
+  const filteredPromoSales = useMemo(() => {
+    const term = promoSearch.trim().toLowerCase()
+    if (!term) return promoSales
+    return promoSales.filter(
+      (row) =>
+        row.productNome.toLowerCase().includes(term) || row.clienteNome.toLowerCase().includes(term)
+    )
+  }, [promoSales, promoSearch])
 
   const filteredLifespan = useMemo(() => {
     const term = lifespanSearch.trim().toLowerCase()
@@ -86,11 +111,21 @@ export function ReportsPage() {
   }, [lifespan, lifespanSearch, lifespanStatus])
 
   const financialCards = [
-    { title: "Receita (12 meses)", value: formatBRL(totalReceita12m), icon: TrendingUp, accent: "green" as const },
-    { title: "Despesas (12 meses)", value: formatBRL(totalDespesas12m), icon: TrendingDown, accent: "pink" as const },
     {
-      title: "Saldo (12 meses)",
-      value: formatBRL(totalReceita12m - totalDespesas12m),
+      title: `Receita (${financialMonths}m)`,
+      value: formatBRL(totalReceitaPeriodo),
+      icon: TrendingUp,
+      accent: "green" as const,
+    },
+    {
+      title: `Despesas (${financialMonths}m)`,
+      value: formatBRL(totalDespesasPeriodo),
+      icon: TrendingDown,
+      accent: "pink" as const,
+    },
+    {
+      title: `Saldo (${financialMonths}m)`,
+      value: formatBRL(totalReceitaPeriodo - totalDespesasPeriodo),
       icon: Wallet,
       accent: "yellow" as const,
     },
@@ -134,9 +169,24 @@ export function ReportsPage() {
           <TabsTrigger value="financeiro">💰 Financeiro</TabsTrigger>
           <TabsTrigger value="estoque">📦 Estoque</TabsTrigger>
           <TabsTrigger value="ciclo-vida">⏳ Ciclo de Vida dos Produtos</TabsTrigger>
+          <TabsTrigger value="promocoes">🏷️ Promoções</TabsTrigger>
         </TabsList>
 
         <TabsContent value="financeiro" className="space-y-4">
+          <div className="flex items-center justify-end">
+            <Select value={String(financialMonths)} onValueChange={(v) => setFinancialMonths(Number(v))}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTH_OPTIONS.map((m) => (
+                  <SelectItem key={m} value={String(m)}>
+                    Últimos {m} meses
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <KpiCardGrid cards={financialCards} />
           <div className="h-72 rounded-xl border border-border bg-card p-4">
             <ResponsiveContainer width="100%" height="100%">
@@ -155,6 +205,21 @@ export function ReportsPage() {
 
         <TabsContent value="estoque" className="space-y-4">
           <KpiCardGrid cards={stockCards} />
+          <div className="flex items-center justify-end">
+            <Select value={stockCategoria} onValueChange={setStockCategoria}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todas as categorias</SelectItem>
+                {categoriaStock.map((c) => (
+                  <SelectItem key={c.categoria} value={c.categoria}>
+                    {c.categoria}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="rounded-lg border border-border">
             <Table>
               <TableHeader>
@@ -166,14 +231,14 @@ export function ReportsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {categoriaStock.length === 0 ? (
+                {filteredCategoriaStock.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground">
                       Nenhum produto cadastrado.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  categoriaStock.map((row) => (
+                  filteredCategoriaStock.map((row) => (
                     <TableRow key={row.categoria}>
                       <TableCell className="font-medium text-foreground">{row.categoria}</TableCell>
                       <TableCell className="text-right">{row.quantidade}</TableCell>
@@ -253,6 +318,63 @@ export function ReportsPage() {
                           {giroStatusLabel[row.status]}
                         </Badge>
                       </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="promocoes" className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Itens vendidos com desconto (marcados como "em promoção" na venda), para acompanhar o
+            que costuma ir para promoção e por quanto.
+          </p>
+          <Input
+            placeholder="Buscar por produto ou cliente..."
+            value={promoSearch}
+            onChange={(e) => setPromoSearch(e.target.value)}
+            className="sm:max-w-xs"
+          />
+          <div className="rounded-lg border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Produto</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead className="text-right">Qtd.</TableHead>
+                  <TableHead className="text-right">Preço Original</TableHead>
+                  <TableHead className="text-right">Preço Vendido</TableHead>
+                  <TableHead className="text-right">Desconto</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPromoSales.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      Nenhuma venda em promoção registrada ainda.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredPromoSales.map((row) => (
+                    <TableRow key={row.saleId}>
+                      <TableCell className="text-muted-foreground">{row.data}</TableCell>
+                      <TableCell className="font-medium text-foreground">{row.productNome}</TableCell>
+                      <TableCell className="text-muted-foreground">{row.clienteNome}</TableCell>
+                      <TableCell className="text-right">{row.quantidade}</TableCell>
+                      <TableCell className="text-right text-muted-foreground line-through">
+                        {formatBRL(row.precoOriginal)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{formatBRL(row.precoVendido)}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge className="bg-brand-pink text-foreground">
+                          -{row.descontoPercentual.toFixed(0)}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{formatBRL(row.total)}</TableCell>
                     </TableRow>
                   ))
                 )}

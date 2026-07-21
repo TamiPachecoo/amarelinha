@@ -91,6 +91,7 @@ interface PurchaseOrdersState {
   fetchAll: () => Promise<void>
   addOrder: (input: PurchaseOrderFormValues, origem?: OrderOrigin) => string
   updateStatus: (id: string, status: PurchaseOrderStatus) => void
+  deleteOrder: (id: string) => Promise<string | null>
   receiveItem: (
     orderId: string,
     itemId: string,
@@ -220,5 +221,17 @@ export const usePurchaseOrdersStore = create<PurchaseOrdersState>((set, get) => 
           .then(({ error }) => error && console.error("Failed to update purchase order status", error))
       }
     }
+  },
+  deleteOrder: async (id) => {
+    const { error } = await supabase.from("purchase_orders").delete().eq("id", id)
+    if (error) {
+      if (error.code === "23503") {
+        return "Não é possível excluir: itens deste pedido já geraram produtos no estoque."
+      }
+      console.error("Failed to delete purchase order", error)
+      return "Não foi possível excluir o pedido."
+    }
+    set((state) => ({ orders: state.orders.filter((o) => o.id !== id) }))
+    return null
   },
 }))

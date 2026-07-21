@@ -17,6 +17,7 @@ function fromRow(row: Record<string, unknown>): Sale {
     formaPagamento: row.forma_pagamento as Sale["formaPagamento"],
     data: row.data as string,
     malinhaId: (row.malinha_id as string) ?? undefined,
+    emPromocao: row.em_promocao as boolean,
   }
 }
 
@@ -32,6 +33,7 @@ function toRow(sale: Sale) {
     forma_pagamento: sale.formaPagamento,
     data: sale.data,
     malinha_id: sale.malinhaId || null,
+    em_promocao: sale.emPromocao,
   }
 }
 
@@ -58,6 +60,7 @@ function buildSale(input: {
   precoUnitario: number
   formaPagamento: Sale["formaPagamento"]
   malinhaId?: string
+  emPromocao?: boolean
 }): Sale {
   return {
     id: crypto.randomUUID(),
@@ -70,6 +73,7 @@ function buildSale(input: {
     formaPagamento: input.formaPagamento,
     data: new Date().toISOString().slice(0, 10),
     malinhaId: input.malinhaId,
+    emPromocao: input.emPromocao ?? false,
   }
 }
 

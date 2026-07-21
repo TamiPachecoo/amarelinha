@@ -6,6 +6,8 @@ export const saleSchema = z.object({
   variantId: z.string().min(1, "Selecione a variante"),
   quantidade: z.coerce.number().int().min(1, "Informe uma quantidade válida"),
   formaPagamento: z.enum(["pix", "dinheiro", "cartao", "conta_cliente"]),
+  emPromocao: z.boolean(),
+  precoPromocional: z.coerce.number().min(0.01).optional(),
 })
 
 export type SaleFormInput = z.input<typeof saleSchema>
