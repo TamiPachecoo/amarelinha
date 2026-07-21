@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
@@ -58,6 +59,13 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
   const selectedProduct = products.find((p) => p.id === selectedProductId)
   const availableVariants = selectedProduct?.variants.filter((v) => v.quantidade > 0) ?? []
   const emPromocao = form.watch("emPromocao")
+
+  useEffect(() => {
+    if (selectedProduct?.emPromocao && selectedProduct.precoPromocional) {
+      form.setValue("emPromocao", true)
+      form.setValue("precoPromocional", selectedProduct.precoPromocional)
+    }
+  }, [selectedProduct, form])
 
   function handleSubmit(values: SaleFormValues) {
     const product = products.find((p) => p.id === values.productId)
@@ -216,6 +224,7 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
         {selectedProduct && (
           <p className="text-sm text-muted-foreground">
             Preço de tabela: {selectedProduct.precoVenda.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            {selectedProduct.emPromocao && " · 🏷️ este produto está em promoção"}
           </p>
         )}
 

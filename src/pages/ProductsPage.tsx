@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Package, Plus, Trash2 } from "lucide-react"
+import { Package, Plus, Tag, Trash2 } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -12,6 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { useCollectionsStore } from "@/features/collections/store/collectionsStore"
 import { useLocationsStore } from "@/features/locations/store/locationsStore"
 import { ProductForm } from "@/features/products/components/ProductForm"
@@ -34,15 +36,19 @@ function formatCustoRange(product: Product): string {
 
 export function ProductsPage() {
   const [isDialogOpen, setDialogOpen] = useState(false)
-  const [viewingProduct, setViewingProduct] = useState<Product | null>(null)
+  const [viewingProductId, setViewingProductId] = useState<string | null>(null)
   const products = useProductsStore((state) => state.products)
   const addProduct = useProductsStore((state) => state.addProduct)
   const deleteProduct = useProductsStore((state) => state.deleteProduct)
+  const setPromocao = useProductsStore((state) => state.setPromocao)
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null)
+  const [precoPromocionalDraft, setPrecoPromocionalDraft] = useState("")
   const locations = useLocationsStore((state) => state.locations)
   const suppliers = useSuppliersStore((state) => state.suppliers)
   const collections = useCollectionsStore((state) => state.collections)
   const orders = usePurchaseOrdersStore((state) => state.orders)
+
+  const viewingProduct = products.find((p) => p.id === viewingProductId) ?? null
 
   function handleAddProduct(values: ProductFormValues) {
     addProduct(values)
@@ -53,7 +59,30 @@ export function ProductsPage() {
     if (!deletingProduct) return
     deleteProduct(deletingProduct.id)
     setDeletingProduct(null)
-    setViewingProduct(null)
+    setViewingProductId(null)
+  }
+
+  function handleOpenProduct(product: Product) {
+    setViewingProductId(product.id)
+    setPrecoPromocionalDraft(product.precoPromocional ? String(product.precoPromocional) : "")
+  }
+
+  function handleTogglePromocao(checked: boolean) {
+    if (!viewingProduct) return
+    if (checked) {
+      const preco = Number(precoPromocionalDraft)
+      if (!preco || preco <= 0) return
+      setPromocao(viewingProduct.id, { emPromocao: true, precoPromocional: preco })
+    } else {
+      setPromocao(viewingProduct.id, { emPromocao: false })
+    }
+  }
+
+  function handleUpdatePrecoPromocional() {
+    if (!viewingProduct || !viewingProduct.emPromocao) return
+    const preco = Number(precoPromocionalDraft)
+    if (!preco || preco <= 0) return
+    setPromocao(viewingProduct.id, { emPromocao: true, precoPromocional: preco })
   }
 
   function locationName(locationId: string) {
@@ -79,7 +108,7 @@ export function ProductsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} onView={setViewingProduct} />
+            <ProductCard key={product.id} product={product} onView={handleOpenProduct} />
           ))}
         </div>
       )}
@@ -98,7 +127,7 @@ export function ProductsPage() {
 
       <Dialog
         open={viewingProduct !== null}
-        onOpenChange={(open) => !open && setViewingProduct(null)}
+        onOpenChange={(open) => !open && setViewingProductId(null)}
       >
         <DialogContent className="sm:max-w-md">
           {viewingProduct && (
@@ -139,6 +168,48 @@ export function ProductsPage() {
                 <dt className="text-muted-foreground">Quantidade Total</dt>
                 <dd className="text-right font-medium">{totalQuantidade(viewingProduct)}</dd>
               </dl>
+
+              <div className="space-y-2 rounded-lg border border-dashed border-input p-3">
+                <div className="flex items-center justify-between">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <Tag className="size-4" />
+                    Colocar em promoção
+                  </p>
+                  <Switch
+                    checked={viewingProduct.emPromocao}
+                    onCheckedChange={handleTogglePromocao}
+                  />
+                </div>
+                {viewingProduct.emPromocao ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={precoPromocionalDraft}
+                      onChange={(e) => setPrecoPromocionalDraft(e.target.value)}
+                      onBlur={handleUpdatePrecoPromocional}
+                      className="max-w-[140px]"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      preço de tabela: {formatBRL(viewingProduct.precoVenda)}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Preço promocional"
+                      value={precoPromocionalDraft}
+                      onChange={(e) => setPrecoPromocionalDraft(e.target.value)}
+                      className="max-w-[140px]"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      informe o preço e ative para colocar em promoção
+                    </span>
+                  </div>
+                )}
+              </div>
 
               <div className="mt-2 space-y-2">
                 <p className="text-sm font-semibold text-foreground">Variantes</p>

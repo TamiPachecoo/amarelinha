@@ -75,6 +75,8 @@ function productFromRow(row: Record<string, unknown>): Omit<Product, "variants">
     foto: (row.foto as string) ?? undefined,
     origem: row.origem as ProductSource,
     createdAt: row.created_at as string,
+    emPromocao: row.em_promocao as boolean,
+    precoPromocional: row.preco_promocional != null ? Number(row.preco_promocional) : undefined,
   }
 }
 
@@ -90,6 +92,8 @@ function productToRow(product: Product) {
     foto: product.foto || null,
     origem: product.origem,
     created_at: product.createdAt,
+    em_promocao: product.emPromocao,
+    preco_promocional: product.precoPromocional ?? null,
   }
 }
 
@@ -131,6 +135,8 @@ function makeProduct(
     origem: input.origem ?? { tipo: "manual", importadoEm: createdAt },
     variants: [variant],
     createdAt,
+    emPromocao: false,
+    precoPromocional: undefined,
   }
 }
 
@@ -159,6 +165,7 @@ interface ProductsState {
   ) => void
   createFromReceiving: (input: ReceivingProductInput) => { productId: string; variantId: string }
   deleteProduct: (id: string) => void
+  setPromocao: (id: string, input: { emPromocao: boolean; precoPromocional?: number }) => void
 }
 
 export const useProductsStore = create<ProductsState>((set, get) => ({
@@ -275,5 +282,26 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
       .delete()
       .eq("id", id)
       .then(({ error }) => error && console.error("Failed to delete product", error))
+  },
+  setPromocao: (id, input) => {
+    set((state) => ({
+      products: state.products.map((product) =>
+        product.id === id
+          ? {
+              ...product,
+              emPromocao: input.emPromocao,
+              precoPromocional: input.emPromocao ? input.precoPromocional : undefined,
+            }
+          : product
+      ),
+    }))
+    supabase
+      .from("products")
+      .update({
+        em_promocao: input.emPromocao,
+        preco_promocional: input.emPromocao ? input.precoPromocional ?? null : null,
+      })
+      .eq("id", id)
+      .then(({ error }) => error && console.error("Failed to update promoção", error))
   },
 }))

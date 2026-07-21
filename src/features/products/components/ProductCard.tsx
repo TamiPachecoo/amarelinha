@@ -58,14 +58,28 @@ export function ProductCard({ product, onView }: ProductCardProps) {
           {product.marca} · {product.categoria}
         </p>
         <div className="mt-2 flex items-baseline justify-between">
-          <span className="text-lg font-bold text-foreground">
-            {formatBRL(product.precoVenda)}
-          </span>
+          {product.emPromocao && product.precoPromocional ? (
+            <span className="flex items-baseline gap-2">
+              <span className="text-sm text-muted-foreground line-through">
+                {formatBRL(product.precoVenda)}
+              </span>
+              <span className="text-lg font-bold text-foreground">
+                {formatBRL(product.precoPromocional)}
+              </span>
+            </span>
+          ) : (
+            <span className="text-lg font-bold text-foreground">
+              {formatBRL(product.precoVenda)}
+            </span>
+          )}
           <span className="text-sm text-muted-foreground">
             {quantidade} {quantidade === 1 ? "peça" : "peças"}
           </span>
         </div>
         <p className="text-xs text-muted-foreground">Custo: {formatCustoRange(product)}</p>
+        {product.emPromocao && (
+          <Badge className="w-fit bg-brand-pink text-foreground">🏷️ Em Promoção</Badge>
+        )}
       </CardContent>
 
       <CardFooter className="px-4 pt-3 pb-4">

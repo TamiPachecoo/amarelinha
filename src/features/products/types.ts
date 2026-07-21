@@ -58,4 +58,9 @@ export interface Product {
   origem: ProductSource
   variants: ProductVariant[]
   createdAt: string
+  /** Produto colocado em promoção manualmente na aba Produtos — preço
+   *  promocional sugerido para a venda, sem alterar precoVenda (preço de
+   *  tabela). */
+  emPromocao: boolean
+  precoPromocional?: number
 }
