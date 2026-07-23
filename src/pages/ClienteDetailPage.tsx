@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link, Navigate, useParams } from "react-router-dom"
-import { ArrowLeft, Plus } from "lucide-react"
+import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -27,6 +28,7 @@ import type { ChildFormValues } from "@/features/customers/schemas/childSchema"
 import type { CustomerFormValues } from "@/features/customers/schemas/customerSchema"
 import type { PaymentFormValues } from "@/features/customers/schemas/paymentSchema"
 import { useCustomersStore } from "@/features/customers/store/customersStore"
+import type { Child } from "@/features/customers/types"
 import { calcularIdade, customerStats, saldoDevedor } from "@/features/customers/utils"
 import { useProductsStore } from "@/features/products/store/productsStore"
 import { formatBRL } from "@/features/products/utils"
@@ -39,12 +41,16 @@ export function ClienteDetailPage() {
   const customers = useCustomersStore((state) => state.customers)
   const updateCustomer = useCustomersStore((state) => state.updateCustomer)
   const addChild = useCustomersStore((state) => state.addChild)
+  const updateChild = useCustomersStore((state) => state.updateChild)
+  const deleteChild = useCustomersStore((state) => state.deleteChild)
   const registerPayment = useCustomersStore((state) => state.registerPayment)
   const products = useProductsStore((state) => state.products)
   const sales = useSalesStore((state) => state.sales)
 
   const [isEditOpen, setEditOpen] = useState(false)
   const [isChildOpen, setChildOpen] = useState(false)
+  const [editingChild, setEditingChild] = useState<Child | null>(null)
+  const [deletingChild, setDeletingChild] = useState<Child | null>(null)
   const [isPaymentOpen, setPaymentOpen] = useState(false)
   const [isSaleOpen, setSaleOpen] = useState(false)
 
@@ -72,6 +78,18 @@ export function ClienteDetailPage() {
   function handleAddChild(values: ChildFormValues) {
     addChild(customer!.id, values)
     setChildOpen(false)
+  }
+
+  function handleUpdateChild(values: ChildFormValues) {
+    if (!editingChild) return
+    updateChild(customer!.id, editingChild.id, values)
+    setEditingChild(null)
+  }
+
+  function handleConfirmDeleteChild() {
+    if (!deletingChild) return
+    deleteChild(customer!.id, deletingChild.id)
+    setDeletingChild(null)
   }
 
   function handlePayment(values: PaymentFormValues) {
@@ -260,8 +278,8 @@ export function ClienteDetailPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Idade</TableHead>
                   <TableHead>Tamanho Roupa</TableHead>
-                  <TableHead>Calçado</TableHead>
                   <TableHead>Observações</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -272,9 +290,25 @@ export function ClienteDetailPage() {
                       {calcularIdade(child.dataNascimento)} anos
                     </TableCell>
                     <TableCell className="text-muted-foreground">{child.tamanhoRoupa}</TableCell>
-                    <TableCell className="text-muted-foreground">{child.numeracaoCalcado}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {child.observacoes || "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingChild(child)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDeletingChild(child)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -349,6 +383,46 @@ export function ClienteDetailPage() {
             <DialogTitle>Adicionar Filho(a)</DialogTitle>
           </DialogHeader>
           <ChildForm onSubmit={handleAddChild} onCancel={() => setChildOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editingChild !== null} onOpenChange={(open) => !open && setEditingChild(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Filho(a)</DialogTitle>
+          </DialogHeader>
+          {editingChild && (
+            <ChildForm
+              initialValues={{
+                nome: editingChild.nome,
+                sexo: editingChild.sexo,
+                dataNascimento: editingChild.dataNascimento,
+                tamanhoRoupa: editingChild.tamanhoRoupa,
+                observacoes: editingChild.observacoes,
+              }}
+              onSubmit={handleUpdateChild}
+              onCancel={() => setEditingChild(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deletingChild !== null} onOpenChange={(open) => !open && setDeletingChild(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Remover filho(a)?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Isso vai remover "{deletingChild?.nome}" do cadastro do cliente.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingChild(null)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDeleteChild}>
+              Remover
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

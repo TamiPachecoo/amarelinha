@@ -6,7 +6,6 @@ export interface Child {
   sexo: Sexo
   dataNascimento: string
   tamanhoRoupa: string
-  numeracaoCalcado: string
   observacoes?: string
 }
 

@@ -41,7 +41,6 @@ const emptyChild: ChildFormValues = {
   sexo: "feminino",
   dataNascimento: "",
   tamanhoRoupa: "",
-  numeracaoCalcado: "",
   observacoes: "",
 }
 
@@ -388,11 +387,6 @@ export function CustomerForm({ initialValues, onSubmit, onCancel }: CustomerForm
                 placeholder="Tamanho de roupa"
                 value={novoFilho.tamanhoRoupa}
                 onChange={(e) => setNovoFilho((prev) => ({ ...prev, tamanhoRoupa: e.target.value }))}
-              />
-              <Input
-                placeholder="Numeração do calçado"
-                value={novoFilho.numeracaoCalcado}
-                onChange={(e) => setNovoFilho((prev) => ({ ...prev, numeracaoCalcado: e.target.value }))}
               />
               <Button type="button" variant="outline" onClick={handleAddFilho}>
                 <Plus className="size-4" />

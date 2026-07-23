@@ -22,26 +22,26 @@ import { Textarea } from "@/components/ui/textarea"
 import { childSchema, type ChildFormValues } from "@/features/customers/schemas/childSchema"
 
 interface ChildFormProps {
+  initialValues?: ChildFormValues
   onSubmit: (values: ChildFormValues) => void
   onCancel: () => void
 }
 
-export function ChildForm({ onSubmit, onCancel }: ChildFormProps) {
+export function ChildForm({ initialValues, onSubmit, onCancel }: ChildFormProps) {
   const form = useForm<ChildFormValues>({
     resolver: zodResolver(childSchema),
-    defaultValues: {
+    defaultValues: initialValues ?? {
       nome: "",
       sexo: "feminino",
       dataNascimento: "",
       tamanhoRoupa: "",
-      numeracaoCalcado: "",
       observacoes: "",
     },
   })
 
   function handleSubmit(values: ChildFormValues) {
     onSubmit(values)
-    form.reset()
+    if (!initialValues) form.reset()
   }
 
   return (
@@ -111,20 +111,6 @@ export function ChildForm({ onSubmit, onCancel }: ChildFormProps) {
               </FormItem>
             )}
           />
-
-          <FormField
-            control={form.control}
-            name="numeracaoCalcado"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Numeração do Calçado</FormLabel>
-                <FormControl>
-                  <Input placeholder="25" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
         <FormField
@@ -145,7 +131,7 @@ export function ChildForm({ onSubmit, onCancel }: ChildFormProps) {
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button type="submit">Adicionar Filho(a)</Button>
+          <Button type="submit">{initialValues ? "Salvar" : "Adicionar Filho(a)"}</Button>
         </div>
       </form>
     </Form>
