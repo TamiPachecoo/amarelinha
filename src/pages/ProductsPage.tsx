@@ -129,7 +129,7 @@ export function ProductsPage() {
         open={viewingProduct !== null}
         onOpenChange={(open) => !open && setViewingProductId(null)}
       >
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
+        <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-md">
           {viewingProduct && (
             <>
               <DialogHeader>
@@ -145,6 +145,7 @@ export function ProductsPage() {
                   </Button>
                 </DialogTitle>
               </DialogHeader>
+              <div className="-mx-6 flex flex-col gap-4 overflow-y-auto px-6">
               {viewingProduct.foto && (
                 <img
                   src={viewingProduct.foto}
@@ -250,6 +251,7 @@ export function ProductsPage() {
                 {viewingProduct.origem.codigoOriginal && (
                   <p>Código original do fornecedor: {viewingProduct.origem.codigoOriginal}</p>
                 )}
+              </div>
               </div>
             </>
           )}
