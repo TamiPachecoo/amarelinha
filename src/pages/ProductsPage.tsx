@@ -129,7 +129,7 @@ export function ProductsPage() {
         open={viewingProduct !== null}
         onOpenChange={(open) => !open && setViewingProductId(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
           {viewingProduct && (
             <>
               <DialogHeader>
