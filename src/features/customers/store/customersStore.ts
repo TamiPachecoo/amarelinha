@@ -11,7 +11,6 @@ function childFromRow(row: Record<string, unknown>): Child {
     sexo: row.sexo as Child["sexo"],
     dataNascimento: row.data_nascimento as string,
     tamanhoRoupa: row.tamanho_roupa as string,
-    numeracaoCalcado: row.numeracao_calcado as string,
     observacoes: (row.observacoes as string) ?? undefined,
   }
 }
@@ -24,7 +23,6 @@ function childToRow(child: Child, customerId: string) {
     sexo: child.sexo,
     data_nascimento: child.dataNascimento,
     tamanho_roupa: child.tamanhoRoupa,
-    numeracao_calcado: child.numeracaoCalcado,
     observacoes: child.observacoes || null,
   }
 }
@@ -90,6 +88,8 @@ interface CustomersState {
   addCustomer: (input: CustomerFormValues, filhos?: ChildFormValues[]) => void
   updateCustomer: (id: string, input: CustomerFormValues) => void
   addChild: (customerId: string, input: ChildFormValues) => void
+  updateChild: (customerId: string, childId: string, input: ChildFormValues) => void
+  deleteChild: (customerId: string, childId: string) => void
   registerPayment: (customerId: string, payment: Omit<PaymentRecord, "id">) => void
 }
 
@@ -195,6 +195,39 @@ export const useCustomersStore = create<CustomersState>((set) => ({
       .from("children")
       .insert(childToRow(child, customerId))
       .then(({ error }) => error && console.error("Failed to insert child", error))
+  },
+  updateChild: (customerId, childId, input) => {
+    set((state) => ({
+      customers: state.customers.map((customer) =>
+        customer.id === customerId
+          ? {
+              ...customer,
+              filhos: customer.filhos.map((child) =>
+                child.id === childId ? { ...child, ...input } : child
+              ),
+            }
+          : customer
+      ),
+    }))
+    supabase
+      .from("children")
+      .update(childToRow({ ...input, id: childId } as Child, customerId))
+      .eq("id", childId)
+      .then(({ error }) => error && console.error("Failed to update child", error))
+  },
+  deleteChild: (customerId, childId) => {
+    set((state) => ({
+      customers: state.customers.map((customer) =>
+        customer.id === customerId
+          ? { ...customer, filhos: customer.filhos.filter((child) => child.id !== childId) }
+          : customer
+      ),
+    }))
+    supabase
+      .from("children")
+      .delete()
+      .eq("id", childId)
+      .then(({ error }) => error && console.error("Failed to delete child", error))
   },
   registerPayment: (customerId, payment) => {
     const record: PaymentRecord = { ...payment, id: crypto.randomUUID() }
