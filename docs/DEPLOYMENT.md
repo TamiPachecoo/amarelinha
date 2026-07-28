@@ -1,9 +1,14 @@
 # Deployment
 
-Ainda não configurado. Este é o plano para quando o app estiver pronto
-para ir ao ar.
+Hospedado na Vercel, ligado ao repositório GitHub. Todo push para
+`main` gera um novo deploy automaticamente — não há passo manual.
+
+URL de produção (estável, não muda a cada deploy):
+https://amarelinha-puce.vercel.app
 
 ## Variáveis de ambiente necessárias
+
+Configuradas em Vercel → Settings → Environment Variables:
 
 ```
 VITE_SUPABASE_URL=
@@ -17,9 +22,3 @@ npm install
 npm run build   # gera dist/
 npm run preview # serve o build de produção localmente
 ```
-
-## Hospedagem (sugestão)
-
-Qualquer host de site estático (Vercel, Netlify, Cloudflare Pages)
-funciona bem com Vite. Configurar as duas variáveis acima no painel do
-provedor antes do primeiro deploy.
