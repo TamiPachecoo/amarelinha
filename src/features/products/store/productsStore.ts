@@ -165,6 +165,7 @@ interface ProductsState {
     localizacaoId: string
   ) => void
   createFromReceiving: (input: ReceivingProductInput) => { productId: string; variantId: string }
+  updateProduct: (id: string, input: NewProductInput) => void
   deleteProduct: (id: string) => void
   setPromocao: (id: string, input: { emPromocao: boolean; precoPromocional?: number }) => void
 }
@@ -275,6 +276,48 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
     set((state) => ({ products: [product, ...state.products] }))
     persistProduct(product)
     return { productId: product.id, variantId: product.variants[0].id }
+  },
+  updateProduct: (id, input) => {
+    set((state) => ({
+      products: state.products.map((product) => {
+        if (product.id !== id) return product
+        const [firstVariant, ...restVariants] = product.variants
+        const updatedVariant: ProductVariant = {
+          ...firstVariant,
+          cor: input.cor,
+          tamanho: input.tamanho,
+          sku: input.sku,
+          localizacaoId: input.localizacaoId,
+          quantidade: input.quantidade,
+          estoqueMinimo: input.estoqueMinimo,
+          custo: input.custo ?? firstVariant.custo,
+        }
+        return {
+          ...product,
+          nome: input.nome,
+          sku: input.sku,
+          categoria: input.categoria,
+          marca: input.marca,
+          precoVenda: input.precoVenda,
+          variants: [updatedVariant, ...restVariants],
+        }
+      }),
+    }))
+    const product = get().products.find((p) => p.id === id)
+    if (!product) return
+    supabase
+      .from("products")
+      .update(productToRow(product))
+      .eq("id", id)
+      .then(({ error }) => error && console.error("Failed to update product", error))
+    const [firstVariant] = product.variants
+    if (firstVariant) {
+      supabase
+        .from("product_variants")
+        .update(variantToRow(firstVariant))
+        .eq("id", firstVariant.id)
+        .then(({ error }) => error && console.error("Failed to update product variant", error))
+    }
   },
   deleteProduct: (id) => {
     set((state) => ({ products: state.products.filter((product) => product.id !== id) }))

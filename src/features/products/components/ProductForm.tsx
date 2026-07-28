@@ -28,14 +28,21 @@ import {
 interface ProductFormProps {
   onSubmit: (values: ProductFormValues) => void
   onCancel: () => void
+  defaultValues?: ProductFormInput
+  submitLabel?: string
 }
 
-export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
+export function ProductForm({
+  onSubmit,
+  onCancel,
+  defaultValues,
+  submitLabel = "Salvar Produto",
+}: ProductFormProps) {
   const locations = useLocationsStore((state) => state.locations)
 
   const form = useForm<ProductFormInput, unknown, ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: {
+    defaultValues: defaultValues ?? {
       nome: "",
       sku: "",
       categoria: "",
@@ -255,7 +262,7 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button type="submit">Salvar Produto</Button>
+          <Button type="submit">{submitLabel}</Button>
         </div>
       </form>
     </Form>
