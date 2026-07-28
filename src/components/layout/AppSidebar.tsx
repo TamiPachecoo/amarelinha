@@ -71,8 +71,12 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-2 py-4">
         <div className="flex items-center gap-2">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary text-base">
-            {storeSettings.logoEmoji}
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary p-1">
+            <img
+              src={storeSettings.logoUrl}
+              alt={storeSettings.nomeCurto}
+              className="size-full object-contain"
+            />
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
             <span className="font-extrabold text-foreground">{storeSettings.nomeCurto}</span>

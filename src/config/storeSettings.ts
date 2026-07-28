@@ -9,7 +9,7 @@ export interface StoreSettings {
   id: string
   nomeExibicao: string
   nomeCurto: string
-  logoEmoji: string
+  logoUrl: string
   versao: string
 }
 
@@ -17,6 +17,6 @@ export const storeSettings: StoreSettings = {
   id: "amarelinha-kids",
   nomeExibicao: "Amarelinha Gestor",
   nomeCurto: "Amarelinha",
-  logoEmoji: "🧸",
+  logoUrl: "/logo-icon.png",
   versao: "v1.0",
 }
