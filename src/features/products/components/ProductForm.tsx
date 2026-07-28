@@ -41,6 +41,7 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
       categoria: "",
       marca: "",
       precoVenda: undefined,
+      custo: undefined,
       cor: "",
       tamanho: "",
       localizacaoId: "",
@@ -170,7 +171,7 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
           )}
         />
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <FormField
             control={form.control}
             name="precoVenda"
@@ -182,6 +183,26 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
                     type="number"
                     step="0.01"
                     placeholder="129.90"
+                    {...field}
+                    value={field.value as string | number}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="custo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Valor de Custo</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="59.90"
                     {...field}
                     value={field.value as string | number}
                   />

@@ -8,6 +8,7 @@ export interface NewProductInput {
   categoria: string
   marca: string
   precoVenda: number
+  custo?: number
   cor: string
   tamanho: string
   localizacaoId: string
