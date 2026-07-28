@@ -197,7 +197,7 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
             name="custo"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Valor de Compra</FormLabel>
+                <FormLabel>Valor de Custo</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
