@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom"
 
 import { AppLayout } from "@/components/layout/AppLayout"
 import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute"
+import { AuthCallbackPage } from "@/pages/AuthCallbackPage"
 import { CatalogOrderPage } from "@/pages/CatalogOrderPage"
 import { ClienteDetailPage } from "@/pages/ClienteDetailPage"
 import { ClientesPage } from "@/pages/ClientesPage"
@@ -17,6 +18,7 @@ import { ProductsPage } from "@/pages/ProductsPage"
 import { PurchaseOrdersPage } from "@/pages/PurchaseOrdersPage"
 import { ReceivingPage } from "@/pages/ReceivingPage"
 import { ReportsPage } from "@/pages/ReportsPage"
+import { SetPasswordPage } from "@/pages/SetPasswordPage"
 import { SettingsPage } from "@/pages/SettingsPage"
 import { SuppliersPage } from "@/pages/SuppliersPage"
 
@@ -24,6 +26,8 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/auth/set-password" element={<SetPasswordPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
