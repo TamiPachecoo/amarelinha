@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Package, Pencil, Plus, Tag, Trash2 } from "lucide-react"
+import { Package, Plus, Tag, Trash2 } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -19,7 +19,7 @@ import { useLocationsStore } from "@/features/locations/store/locationsStore"
 import { ProductForm } from "@/features/products/components/ProductForm"
 import { ProductCard } from "@/features/products/components/ProductCard"
 import { useProductsStore } from "@/features/products/store/productsStore"
-import type { ProductFormInput, ProductFormValues } from "@/features/products/schemas/productSchema"
+import type { ProductFormValues } from "@/features/products/schemas/productSchema"
 import type { Product } from "@/features/products/types"
 import { productSourceTypeLabel } from "@/features/products/types"
 import { custoRange, formatBRL, totalQuantidade } from "@/features/products/utils"
@@ -39,11 +39,9 @@ export function ProductsPage() {
   const [viewingProductId, setViewingProductId] = useState<string | null>(null)
   const products = useProductsStore((state) => state.products)
   const addProduct = useProductsStore((state) => state.addProduct)
-  const updateProduct = useProductsStore((state) => state.updateProduct)
   const deleteProduct = useProductsStore((state) => state.deleteProduct)
   const setPromocao = useProductsStore((state) => state.setPromocao)
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null)
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [precoPromocionalDraft, setPrecoPromocionalDraft] = useState("")
   const locations = useLocationsStore((state) => state.locations)
   const suppliers = useSuppliersStore((state) => state.suppliers)
@@ -55,34 +53,6 @@ export function ProductsPage() {
   function handleAddProduct(values: ProductFormValues) {
     addProduct(values)
     setDialogOpen(false)
-  }
-
-  function handleOpenEdit(product: Product) {
-    setEditingProduct(product)
-    setViewingProductId(null)
-  }
-
-  function handleUpdateProduct(values: ProductFormValues) {
-    if (!editingProduct) return
-    updateProduct(editingProduct.id, values)
-    setEditingProduct(null)
-  }
-
-  function editDefaultValues(product: Product): ProductFormInput {
-    const variant = product.variants[0]
-    return {
-      nome: product.nome,
-      sku: product.sku,
-      categoria: product.categoria,
-      marca: product.marca,
-      precoVenda: product.precoVenda,
-      custo: variant?.custo,
-      cor: variant?.cor ?? "",
-      tamanho: variant?.tamanho ?? "",
-      localizacaoId: variant?.localizacaoId ?? "",
-      quantidade: variant?.quantidade ?? 0,
-      estoqueMinimo: variant?.estoqueMinimo ?? 0,
-    }
   }
 
   function handleConfirmDelete() {
@@ -156,26 +126,6 @@ export function ProductsPage() {
       </Dialog>
 
       <Dialog
-        open={editingProduct !== null}
-        onOpenChange={(open) => !open && setEditingProduct(null)}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Editar Produto</DialogTitle>
-          </DialogHeader>
-          {editingProduct && (
-            <ProductForm
-              key={editingProduct.id}
-              defaultValues={editDefaultValues(editingProduct)}
-              submitLabel="Salvar Alterações"
-              onSubmit={handleUpdateProduct}
-              onCancel={() => setEditingProduct(null)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
         open={viewingProduct !== null}
         onOpenChange={(open) => !open && setViewingProductId(null)}
       >
@@ -185,23 +135,14 @@ export function ProductsPage() {
               <DialogHeader>
                 <DialogTitle className="flex items-center justify-between gap-2">
                   {viewingProduct.nome}
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleOpenEdit(viewingProduct)}
-                    >
-                      <Pencil />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setDeletingProduct(viewingProduct)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeletingProduct(viewingProduct)}
+                  >
+                    <Trash2 />
+                  </Button>
                 </DialogTitle>
               </DialogHeader>
               <div className="-mx-6 flex flex-col gap-4 overflow-y-auto px-6">

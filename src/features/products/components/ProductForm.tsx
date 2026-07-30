@@ -28,27 +28,19 @@ import {
 interface ProductFormProps {
   onSubmit: (values: ProductFormValues) => void
   onCancel: () => void
-  defaultValues?: ProductFormInput
-  submitLabel?: string
 }
 
-export function ProductForm({
-  onSubmit,
-  onCancel,
-  defaultValues,
-  submitLabel = "Salvar Produto",
-}: ProductFormProps) {
+export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
   const locations = useLocationsStore((state) => state.locations)
 
   const form = useForm<ProductFormInput, unknown, ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: defaultValues ?? {
+    defaultValues: {
       nome: "",
       sku: "",
       categoria: "",
       marca: "",
       precoVenda: undefined,
-      custo: undefined,
       cor: "",
       tamanho: "",
       localizacaoId: "",
@@ -178,7 +170,7 @@ export function ProductForm({
           )}
         />
 
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <FormField
             control={form.control}
             name="precoVenda"
@@ -190,26 +182,6 @@ export function ProductForm({
                     type="number"
                     step="0.01"
                     placeholder="129.90"
-                    {...field}
-                    value={field.value as string | number}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="custo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Valor de Custo</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="59.90"
                     {...field}
                     value={field.value as string | number}
                   />
@@ -262,7 +234,7 @@ export function ProductForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button type="submit">{submitLabel}</Button>
+          <Button type="submit">Salvar Produto</Button>
         </div>
       </form>
     </Form>
