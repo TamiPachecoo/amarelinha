@@ -11,6 +11,7 @@ export const productSchema = z.object({
   localizacaoId: z.string().min(1, "Selecione a localização"),
   quantidade: z.coerce.number().int().min(0, "Informe uma quantidade válida"),
   estoqueMinimo: z.coerce.number().int().min(0, "Informe um estoque mínimo válido"),
+  foto: z.string().optional(),
 })
 
 export type ProductFormInput = z.input<typeof productSchema>

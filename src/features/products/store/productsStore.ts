@@ -13,6 +13,7 @@ export interface NewProductInput {
   localizacaoId: string
   quantidade: number
   estoqueMinimo: number
+  foto?: string
 }
 
 export interface ReceivingProductInput {

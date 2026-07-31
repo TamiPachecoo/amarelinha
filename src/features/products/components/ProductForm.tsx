@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
@@ -32,6 +33,7 @@ interface ProductFormProps {
 
 export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
   const locations = useLocationsStore((state) => state.locations)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
   const form = useForm<ProductFormInput, unknown, ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -46,12 +48,47 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
       localizacaoId: "",
       quantidade: undefined,
       estoqueMinimo: undefined,
+      foto: undefined,
     },
   })
+
+  async function handlePhotoChange(file: File | null) {
+    if (!file) {
+      setPhotoPreview(null)
+      form.setValue("foto", undefined, { shouldDirty: true })
+      return
+    }
+
+    if (!file.type.startsWith("image/")) {
+      form.setError("foto", { message: "Selecione uma imagem válida." })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      form.setError("foto", { message: "A imagem deve ter no máximo 5 MB." })
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : null
+      setPhotoPreview(result)
+      form.clearErrors("foto")
+      form.setValue("foto", result ?? undefined, { shouldDirty: true })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handleCancel() {
+    form.reset()
+    setPhotoPreview(null)
+    onCancel()
+  }
 
   function handleSubmit(values: ProductFormValues) {
     onSubmit(values)
     form.reset()
+    setPhotoPreview(null)
   }
 
   return (
@@ -147,6 +184,34 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
 
         <FormField
           control={form.control}
+          name="foto"
+          render={() => (
+            <FormItem>
+              <FormLabel>Foto do produto</FormLabel>
+              <FormControl>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => handlePhotoChange(event.target.files?.[0] ?? null)}
+                />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                Envie uma imagem JPG, PNG ou WEBP de até 5 MB.
+              </p>
+              {photoPreview && (
+                <img
+                  src={photoPreview}
+                  alt="Pré-visualização da foto do produto"
+                  className="mt-2 max-h-40 rounded-md border border-border object-cover"
+                />
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="localizacaoId"
           render={({ field }) => (
             <FormItem>
@@ -231,7 +296,7 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
         </div>
 
         <div className="flex justify-end gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
           <Button type="submit">Salvar Produto</Button>
