@@ -117,15 +117,14 @@ export function LoginForm() {
           <p className="text-sm font-medium text-emerald-700">{infoMessage}</p>
         )}
 
-        <Button
+        <button
           type="button"
-          variant="link"
-          className="h-auto p-0 text-sm"
+          className="text-left text-sm font-medium text-primary underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
           onClick={onForgotPassword}
           disabled={isSubmitting || isResettingPassword}
         >
-          {isResettingPassword ? "Enviando e-mail..." : "Esqueci minha senha"}
-        </Button>
+          {isResettingPassword ? "Enviando e-mail..." : "Esqueci minha senha?"}
+        </button>
 
         <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
           {isSubmitting && <Loader2 className="size-4 animate-spin" />}
