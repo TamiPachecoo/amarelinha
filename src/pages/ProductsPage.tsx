@@ -86,6 +86,14 @@ export function ProductsPage() {
     setPromocao(viewingProduct.id, { emPromocao: true, precoPromocional: preco })
   }
 
+  function handleSaveProductEdits() {
+    if (!viewingProduct) return
+
+    if (viewingProduct.emPromocao) {
+      handleUpdatePrecoPromocional()
+    }
+  }
+
   function locationName(locationId: string) {
     return locations.find((location) => location.id === locationId)?.nome ?? "—"
   }
@@ -232,7 +240,6 @@ export function ProductsPage() {
                       step="0.01"
                       value={precoPromocionalDraft}
                       onChange={(e) => setPrecoPromocionalDraft(e.target.value)}
-                      onBlur={handleUpdatePrecoPromocional}
                       className="max-w-[140px]"
                     />
                     <span className="text-xs text-muted-foreground">
@@ -252,6 +259,14 @@ export function ProductsPage() {
                     <span className="text-xs text-muted-foreground">
                       informe o preço e ative para colocar em promoção
                     </span>
+                  </div>
+                )}
+
+                {viewingProduct.emPromocao && (
+                  <div className="pt-1">
+                    <Button type="button" size="sm" onClick={handleSaveProductEdits}>
+                      Salvar alterações
+                    </Button>
                   </div>
                 )}
               </div>
