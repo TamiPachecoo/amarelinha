@@ -157,6 +157,7 @@ interface ProductsState {
   products: Product[]
   fetchAll: () => Promise<void>
   addProduct: (input: NewProductInput) => void
+  setProductPhoto: (id: string, foto?: string) => void
   adjustVariantQuantity: (variantId: string, delta: number) => void
   receiveVariant: (
     variantId: string,
@@ -201,6 +202,24 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
     const product = makeProduct(input)
     set((state) => ({ products: [product, ...state.products] }))
     persistProduct(product)
+  },
+  setProductPhoto: (id, foto) => {
+    set((state) => ({
+      products: state.products.map((product) =>
+        product.id === id
+          ? {
+              ...product,
+              foto,
+            }
+          : product
+      ),
+    }))
+
+    supabase
+      .from("products")
+      .update({ foto: foto ?? null })
+      .eq("id", id)
+      .then(({ error }) => error && console.error("Failed to update product photo", error))
   },
   adjustVariantQuantity: (variantId, delta) => {
     set((state) => ({

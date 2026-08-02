@@ -39,6 +39,7 @@ export function ProductsPage() {
   const [viewingProductId, setViewingProductId] = useState<string | null>(null)
   const products = useProductsStore((state) => state.products)
   const addProduct = useProductsStore((state) => state.addProduct)
+  const setProductPhoto = useProductsStore((state) => state.setProductPhoto)
   const deleteProduct = useProductsStore((state) => state.deleteProduct)
   const setPromocao = useProductsStore((state) => state.setPromocao)
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null)
@@ -87,6 +88,23 @@ export function ProductsPage() {
 
   function locationName(locationId: string) {
     return locations.find((location) => location.id === locationId)?.nome ?? "—"
+  }
+
+  function handleChangeProductPhoto(product: Product, file: File | null) {
+    if (!file) return
+    if (!file.type.startsWith("image/")) return
+    if (file.size > 5 * 1024 * 1024) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const photo = typeof reader.result === "string" ? reader.result : undefined
+      setProductPhoto(product.id, photo)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handleRemoveProductPhoto(product: Product) {
+    setProductPhoto(product.id, undefined)
   }
 
   return (
@@ -153,6 +171,32 @@ export function ProductsPage() {
                   className="max-h-48 w-full rounded-lg object-cover"
                 />
               )}
+
+              <div className="space-y-2 rounded-lg border border-dashed border-input p-3">
+                <p className="text-sm font-semibold text-foreground">Foto do produto</p>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    handleChangeProductPhoto(viewingProduct, event.target.files?.[0] ?? null)
+                    event.currentTarget.value = ""
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Envie uma imagem JPG, PNG ou WEBP de até 5 MB.
+                </p>
+                {viewingProduct.foto && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRemoveProductPhoto(viewingProduct)}
+                  >
+                    Remover foto
+                  </Button>
+                )}
+              </div>
+
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <dt className="text-muted-foreground">SKU</dt>
                 <dd className="text-right font-medium">{viewingProduct.sku}</dd>
