@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
@@ -27,30 +27,49 @@ import {
 } from "@/features/products/schemas/productSchema"
 
 interface ProductFormProps {
-  onSubmit: (values: ProductFormValues) => void
+  defaultValues?: Partial<ProductFormInput>
+  submitLabel?: string
+  onSubmit: (values: ProductFormValues) => Promise<{ success: boolean; error?: string }>
   onCancel: () => void
 }
 
-export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
+function getDefaultValues(defaultValues?: Partial<ProductFormInput>): ProductFormInput {
+  return {
+    nome: "",
+    sku: "",
+    categoria: "",
+    marca: "",
+    precoVenda: undefined,
+    custo: undefined,
+    cor: "",
+    tamanho: "",
+    localizacaoId: "",
+    quantidade: undefined,
+    estoqueMinimo: undefined,
+    foto: undefined,
+    ...defaultValues,
+  }
+}
+
+export function ProductForm({
+  defaultValues,
+  submitLabel = "Salvar Produto",
+  onSubmit,
+  onCancel,
+}: ProductFormProps) {
   const locations = useLocationsStore((state) => state.locations)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const form = useForm<ProductFormInput, unknown, ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: {
-      nome: "",
-      sku: "",
-      categoria: "",
-      marca: "",
-      precoVenda: undefined,
-      cor: "",
-      tamanho: "",
-      localizacaoId: "",
-      quantidade: undefined,
-      estoqueMinimo: undefined,
-      foto: undefined,
-    },
+    defaultValues: getDefaultValues(defaultValues),
   })
+
+  useEffect(() => {
+    form.reset(getDefaultValues(defaultValues))
+  }, [defaultValues, form])
 
   async function handlePhotoChange(file: File | null) {
     if (!file) {
@@ -80,15 +99,25 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
   }
 
   function handleCancel() {
-    form.reset()
+    form.reset(getDefaultValues(defaultValues))
     setPhotoPreview(null)
+    setSubmitError(null)
     onCancel()
   }
 
-  function handleSubmit(values: ProductFormValues) {
-    onSubmit(values)
-    form.reset()
-    setPhotoPreview(null)
+  async function handleSubmit(values: ProductFormValues) {
+    setSubmitError(null)
+    setIsSubmitting(true)
+    const result = await onSubmit(values)
+    setIsSubmitting(false)
+
+    if (result.success) {
+      form.reset(getDefaultValues())
+      setPhotoPreview(null)
+      return
+    }
+
+    setSubmitError(result.error ?? "Não foi possível salvar o produto. Tente novamente.")
   }
 
   return (
@@ -248,7 +277,27 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
                     step="0.01"
                     placeholder="129.90"
                     {...field}
-                    value={field.value as string | number}
+                    value={field.value as number | string | undefined}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="custo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Valor de Custo Unitário</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="45.00"
+                    {...field}
+                    value={field.value as number | string | undefined}
                   />
                 </FormControl>
                 <FormMessage />
@@ -267,14 +316,16 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
                     type="number"
                     placeholder="10"
                     {...field}
-                    value={field.value as string | number}
+                    value={field.value as number | string | undefined}
                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+        </div>
 
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField
             control={form.control}
             name="estoqueMinimo"
@@ -286,7 +337,7 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
                     type="number"
                     placeholder="3"
                     {...field}
-                    value={field.value as string | number}
+                    value={field.value as number | string | undefined}
                   />
                 </FormControl>
                 <FormMessage />
@@ -295,11 +346,24 @@ export function ProductForm({ onSubmit, onCancel }: ProductFormProps) {
           />
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={handleCancel}>
-            Cancelar
-          </Button>
-          <Button type="submit">Salvar Produto</Button>
+        {submitError && (
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {submitError}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <p className="text-sm text-muted-foreground">
+            {isSubmitting ? "Salvando no Supabase..." : "As alterações só aparecem após a confirmação do Supabase."}
+          </p>
+          <div className="flex gap-3">
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Salvando..." : submitLabel}
+            </Button>
+          </div>
         </div>
       </form>
     </Form>

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Package, Plus, Tag, Trash2 } from "lucide-react"
+import { Package, Pencil, Plus, Tag, Trash2 } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -22,7 +22,13 @@ import { useProductsStore } from "@/features/products/store/productsStore"
 import type { ProductFormValues } from "@/features/products/schemas/productSchema"
 import type { Product } from "@/features/products/types"
 import { productSourceTypeLabel } from "@/features/products/types"
-import { custoRange, formatBRL, totalQuantidade } from "@/features/products/utils"
+import {
+  custoRange,
+  formatBRL,
+  investimentoEstoque,
+  totalQuantidade,
+  valorEstoque,
+} from "@/features/products/utils"
 import { usePurchaseOrdersStore } from "@/features/purchasing/store/purchaseOrdersStore"
 import { useSuppliersStore } from "@/features/suppliers/store/suppliersStore"
 
@@ -34,11 +40,32 @@ function formatCustoRange(product: Product): string {
     : `${formatBRL(range.min)} – ${formatBRL(range.max)}`
 }
 
+function buildEditDefaultValues(product: Product): ProductFormValues {
+  const variant = product.variants[0]
+  return {
+    nome: product.nome,
+    sku: product.sku,
+    categoria: product.categoria,
+    marca: product.marca,
+    precoVenda: product.precoVenda,
+    custo: variant?.custo ?? 0,
+    cor: variant?.cor ?? "",
+    tamanho: variant?.tamanho ?? "",
+    localizacaoId: variant?.localizacaoId ?? "",
+    quantidade: variant?.quantidade ?? 0,
+    estoqueMinimo: variant?.estoqueMinimo ?? 0,
+    foto: product.foto,
+  }
+}
+
 export function ProductsPage() {
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [viewingProductId, setViewingProductId] = useState<string | null>(null)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
   const products = useProductsStore((state) => state.products)
   const addProduct = useProductsStore((state) => state.addProduct)
+  const updateProduct = useProductsStore((state) => state.updateProduct)
   const setProductPhoto = useProductsStore((state) => state.setProductPhoto)
   const deleteProduct = useProductsStore((state) => state.deleteProduct)
   const setPromocao = useProductsStore((state) => state.setPromocao)
@@ -51,9 +78,32 @@ export function ProductsPage() {
 
   const viewingProduct = products.find((p) => p.id === viewingProductId) ?? null
 
-  function handleAddProduct(values: ProductFormValues) {
-    addProduct(values)
-    setDialogOpen(false)
+  async function handleAddProduct(values: ProductFormValues) {
+    const result = await addProduct(values)
+    if (result.success) {
+      setFeedbackMessage("Produto salvo com sucesso após confirmação do Supabase.")
+      setDialogOpen(false)
+      return result
+    }
+
+    setFeedbackMessage(result.error ?? "Não foi possível salvar o produto.")
+    return result
+  }
+
+  async function handleUpdateProduct(values: ProductFormValues) {
+    if (!editingProduct) {
+      return { success: false, error: "Produto não encontrado para edição." }
+    }
+
+    const result = await updateProduct(editingProduct.id, values)
+    if (result.success) {
+      setFeedbackMessage("Produto atualizado com sucesso após confirmação do Supabase.")
+      setEditingProduct(null)
+      return result
+    }
+
+    setFeedbackMessage(result.error ?? "Não foi possível salvar as alterações.")
+    return result
   }
 
   function handleConfirmDelete() {
@@ -65,7 +115,13 @@ export function ProductsPage() {
 
   function handleOpenProduct(product: Product) {
     setViewingProductId(product.id)
+    setFeedbackMessage(null)
     setPrecoPromocionalDraft(product.precoPromocional ? String(product.precoPromocional) : "")
+  }
+
+  function handleOpenEdit(product: Product) {
+    setEditingProduct(product)
+    setFeedbackMessage(null)
   }
 
   function handleTogglePromocao(checked: boolean) {
@@ -125,6 +181,14 @@ export function ProductsPage() {
         </Button>
       </div>
 
+      {feedbackMessage && (
+        <div
+          className={`mb-4 rounded-md border px-3 py-2 text-sm ${feedbackMessage.startsWith("Não") ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-brand-green/40 bg-brand-green/10 text-foreground"}`}
+        >
+          {feedbackMessage}
+        </div>
+      )}
+
       {products.length === 0 ? (
         <EmptyState
           icon={Package}
@@ -144,10 +208,24 @@ export function ProductsPage() {
           <DialogHeader>
             <DialogTitle>Cadastrar Produto</DialogTitle>
           </DialogHeader>
-          <ProductForm
-            onSubmit={handleAddProduct}
-            onCancel={() => setDialogOpen(false)}
-          />
+          <ProductForm onSubmit={handleAddProduct} onCancel={() => setDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editingProduct !== null} onOpenChange={(open) => !open && setEditingProduct(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Produto</DialogTitle>
+          </DialogHeader>
+          {editingProduct && (
+            <ProductForm
+              key={editingProduct.id}
+              defaultValues={buildEditDefaultValues(editingProduct)}
+              submitLabel="Salvar Alterações"
+              onSubmit={handleUpdateProduct}
+              onCancel={() => setEditingProduct(null)}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
@@ -161,14 +239,19 @@ export function ProductsPage() {
               <DialogHeader>
                 <DialogTitle className="flex items-center justify-between gap-2">
                   {viewingProduct.nome}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setDeletingProduct(viewingProduct)}
-                  >
-                    <Trash2 />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(viewingProduct)}>
+                      <Pencil />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeletingProduct(viewingProduct)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
                 </DialogTitle>
               </DialogHeader>
               <div className="-mx-6 flex flex-col gap-4 overflow-y-auto px-6">
@@ -215,11 +298,13 @@ export function ProductsPage() {
                 <dt className="text-muted-foreground">Preço de Custo</dt>
                 <dd className="text-right font-medium">{formatCustoRange(viewingProduct)}</dd>
                 <dt className="text-muted-foreground">Preço de Venda</dt>
-                <dd className="text-right font-medium">
-                  {formatBRL(viewingProduct.precoVenda)}
-                </dd>
+                <dd className="text-right font-medium">{formatBRL(viewingProduct.precoVenda)}</dd>
                 <dt className="text-muted-foreground">Quantidade Total</dt>
                 <dd className="text-right font-medium">{totalQuantidade(viewingProduct)}</dd>
+                <dt className="text-muted-foreground">Valor potencial de venda</dt>
+                <dd className="text-right font-medium">{formatBRL(valorEstoque(viewingProduct))}</dd>
+                <dt className="text-muted-foreground">Valor investido em estoque</dt>
+                <dd className="text-right font-medium">{formatBRL(investimentoEstoque(viewingProduct))}</dd>
               </dl>
 
               <div className="space-y-2 rounded-lg border border-dashed border-input p-3">

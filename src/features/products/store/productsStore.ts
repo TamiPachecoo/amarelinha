@@ -8,6 +8,22 @@ export interface NewProductInput {
   categoria: string
   marca: string
   precoVenda: number
+  custo?: number
+  cor: string
+  tamanho: string
+  localizacaoId: string
+  quantidade: number
+  estoqueMinimo: number
+  foto?: string
+}
+
+export interface UpdateProductInput {
+  nome: string
+  sku: string
+  categoria: string
+  marca: string
+  precoVenda: number
+  custo: number
   cor: string
   tamanho: string
   localizacaoId: string
@@ -48,10 +64,10 @@ function variantFromRow(row: Record<string, unknown>): ProductVariant {
   }
 }
 
-function variantToRow(variant: ProductVariant) {
+function variantToRow(variant: ProductVariant, productIdOverride?: string) {
   return {
     id: variant.id,
-    product_id: variant.productId,
+    product_id: productIdOverride ?? variant.productId,
     cor: variant.cor,
     tamanho: variant.tamanho,
     sku: variant.sku,
@@ -141,22 +157,47 @@ function makeProduct(
   }
 }
 
-async function persistProduct(product: Product) {
-  const { error } = await supabase.from("products").insert(productToRow(product))
-  if (error) {
-    console.error("Failed to insert product", error)
-    return
+async function persistProduct(product: Product): Promise<{ success: boolean; error?: string }> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return { success: false, error: "Você está offline. Verifique a conexão e tente novamente." }
   }
+
+  const { data: insertedProduct, error: productError } = await supabase
+    .from("products")
+    .insert(productToRow(product))
+    .select("*")
+    .single()
+
+  if (productError || !insertedProduct) {
+    console.error("Failed to insert product", productError)
+    return {
+      success: false,
+      error: "Não foi possível salvar o produto. Verifique a conexão e tente novamente.",
+    }
+  }
+
   const { error: variantsError } = await supabase
     .from("product_variants")
-    .insert(product.variants.map(variantToRow))
-  if (variantsError) console.error("Failed to insert product variants", variantsError)
+    .insert(product.variants.map((variant) => variantToRow(variant, product.id)))
+
+  if (variantsError) {
+    console.error("Failed to insert product variants", variantsError)
+    await supabase.from("products").delete().eq("id", product.id)
+    return {
+      success: false,
+      error:
+        "O produto não foi salvo por completo. A conexão pode ter caído e o cadastro parcial foi removido. Tente novamente.",
+    }
+  }
+
+  return { success: true }
 }
 
 interface ProductsState {
   products: Product[]
   fetchAll: () => Promise<void>
-  addProduct: (input: NewProductInput) => void
+  addProduct: (input: NewProductInput) => Promise<{ success: boolean; error?: string }>
+  updateProduct: (id: string, input: UpdateProductInput) => Promise<{ success: boolean; error?: string }>
   setProductPhoto: (id: string, foto?: string) => void
   adjustVariantQuantity: (variantId: string, delta: number) => void
   receiveVariant: (
@@ -198,10 +239,99 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
     }))
     set({ products })
   },
-  addProduct: (input) => {
+  addProduct: async (input) => {
     const product = makeProduct(input)
+    const result = await persistProduct(product)
+
+    if (!result.success) {
+      return result
+    }
+
     set((state) => ({ products: [product, ...state.products] }))
-    persistProduct(product)
+    return { success: true }
+  },
+  updateProduct: async (id, input) => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      return { success: false, error: "Você está offline. Verifique a conexão e tente novamente." }
+    }
+
+    const existingProduct = get().products.find((product) => product.id === id)
+    if (!existingProduct) {
+      return { success: false, error: "Produto não encontrado." }
+    }
+
+    const previousVariant = existingProduct.variants[0]
+    const updatedProduct: Product = {
+      ...existingProduct,
+      nome: input.nome,
+      sku: input.sku,
+      categoria: input.categoria,
+      marca: input.marca,
+      precoVenda: input.precoVenda,
+      foto: input.foto ?? existingProduct.foto,
+      variants: [
+        {
+          ...previousVariant,
+          cor: input.cor,
+          tamanho: input.tamanho,
+          sku: input.sku,
+          localizacaoId: input.localizacaoId,
+          quantidade: input.quantidade,
+          estoqueMinimo: input.estoqueMinimo,
+          custo: input.custo,
+        },
+      ],
+    }
+
+    const { error: productError } = await supabase
+      .from("products")
+      .update({
+        nome: input.nome,
+        sku: input.sku,
+        categoria: input.categoria,
+        marca: input.marca,
+        preco_venda: input.precoVenda,
+        foto: input.foto ?? existingProduct.foto ?? null,
+      })
+      .eq("id", id)
+
+    if (productError) {
+      console.error("Failed to update product", productError)
+      return {
+        success: false,
+        error: "Não foi possível salvar as alterações. Verifique a conexão e tente novamente.",
+      }
+    }
+
+    const { error: variantError } = await supabase
+      .from("product_variants")
+      .update({
+        cor: input.cor,
+        tamanho: input.tamanho,
+        sku: input.sku,
+        localizacao_id: input.localizacaoId,
+        quantidade: input.quantidade,
+        estoque_minimo: input.estoqueMinimo,
+        custo: input.custo,
+      })
+      .eq("id", previousVariant.id)
+
+    if (variantError) {
+      console.error("Failed to update product variant", variantError)
+      await supabase
+        .from("products")
+        .update(productToRow(existingProduct))
+        .eq("id", id)
+      return {
+        success: false,
+        error: "Não foi possível completar a atualização do custo e do estoque. Tente novamente.",
+      }
+    }
+
+    set((state) => ({
+      products: state.products.map((product) => (product.id === id ? updatedProduct : product)),
+    }))
+    return { success: true }
   },
   setProductPhoto: (id, foto) => {
     set((state) => ({

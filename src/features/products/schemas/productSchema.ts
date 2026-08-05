@@ -6,6 +6,7 @@ export const productSchema = z.object({
   categoria: z.string().min(1, "Informe a categoria"),
   marca: z.string().min(1, "Informe a marca"),
   precoVenda: z.coerce.number().min(0.01, "Informe um preço válido"),
+  custo: z.coerce.number().min(0, "Informe um custo válido"),
   cor: z.string().min(1, "Informe a cor"),
   tamanho: z.string().min(1, "Informe o tamanho"),
   localizacaoId: z.string().min(1, "Selecione a localização"),
