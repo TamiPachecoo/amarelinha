@@ -162,13 +162,11 @@ async function persistProduct(product: Product): Promise<{ success: boolean; err
     return { success: false, error: "Você está offline. Verifique a conexão e tente novamente." }
   }
 
-  const { data: insertedProduct, error: productError } = await supabase
+  const { error: productError } = await supabase
     .from("products")
     .insert(productToRow(product))
-    .select("*")
-    .single()
 
-  if (productError || !insertedProduct) {
+  if (productError) {
     console.error("Failed to insert product", productError)
     return {
       success: false,
