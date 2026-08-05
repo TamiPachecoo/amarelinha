@@ -204,32 +204,28 @@ export function ProductsPage() {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="flex max-h-[90vh] min-h-0 flex-col sm:max-w-lg">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Cadastrar Produto</DialogTitle>
           </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            <ProductForm onSubmit={handleAddProduct} onCancel={() => setDialogOpen(false)} />
-          </div>
+          <ProductForm onSubmit={handleAddProduct} onCancel={() => setDialogOpen(false)} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={editingProduct !== null} onOpenChange={(open) => !open && setEditingProduct(null)}>
-        <DialogContent className="flex max-h-[90vh] min-h-0 flex-col sm:max-w-lg">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Editar Produto</DialogTitle>
           </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            {editingProduct && (
-              <ProductForm
-                key={editingProduct.id}
-                defaultValues={buildEditDefaultValues(editingProduct)}
-                submitLabel="Salvar Alterações"
-                onSubmit={handleUpdateProduct}
-                onCancel={() => setEditingProduct(null)}
-              />
-            )}
-          </div>
+          {editingProduct && (
+            <ProductForm
+              key={editingProduct.id}
+              defaultValues={buildEditDefaultValues(editingProduct)}
+              submitLabel="Salvar Alterações"
+              onSubmit={handleUpdateProduct}
+              onCancel={() => setEditingProduct(null)}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
