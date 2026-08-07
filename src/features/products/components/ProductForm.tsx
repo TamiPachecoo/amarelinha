@@ -122,7 +122,7 @@ export function ProductForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} noValidate className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} noValidate className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-4">
         <FormField
           control={form.control}
           name="nome"
