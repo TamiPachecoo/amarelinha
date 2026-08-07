@@ -46,6 +46,8 @@ export function MalinhaDetailPage() {
 
   const [vendidos, setVendidos] = useState<Record<string, number>>({})
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>("pix")
+  const [isClosing, setIsClosing] = useState(false)
+  const [closeError, setCloseError] = useState<string | null>(null)
 
   const malinha = malinhas.find((m) => m.id === malinhaId)
 
@@ -71,8 +73,15 @@ export function MalinhaDetailPage() {
     enviarMalinha(malinha!.id)
   }
 
-  function handleFechar() {
-    fecharMalinha(malinha!.id, { vendidos, formaPagamento })
+  async function handleFechar() {
+    setCloseError(null)
+    setIsClosing(true)
+    const result = await fecharMalinha(malinha!.id, { vendidos, formaPagamento })
+    setIsClosing(false)
+
+    if (!result.success) {
+      setCloseError(result.error ?? "Erro ao fechar a malinha. Tente novamente.")
+    }
   }
 
   function handleExport() {
@@ -302,10 +311,16 @@ export function MalinhaDetailPage() {
               </div>
             </div>
 
-            <Button size="lg" onClick={handleFechar}>
-              Fechar Malinha
+            <Button size="lg" onClick={handleFechar} disabled={isClosing}>
+              {isClosing ? "Fechando..." : "Fechar Malinha"}
             </Button>
           </div>
+
+          {closeError && (
+            <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {closeError}
+            </p>
+          )}
         </div>
       )}
 
