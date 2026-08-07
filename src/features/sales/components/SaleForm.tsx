@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
@@ -41,6 +41,8 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
   const customers = useCustomersStore((state) => state.customers)
   const products = useProductsStore((state) => state.products)
   const registerSale = useSalesStore((state) => state.registerSale)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const form = useForm<SaleFormInput, unknown, SaleFormValues>({
     resolver: zodResolver(saleSchema),
@@ -67,14 +69,27 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
     }
   }, [selectedProduct, form])
 
-  function handleSubmit(values: SaleFormValues) {
+  async function handleSubmit(values: SaleFormValues) {
     const product = products.find((p) => p.id === values.productId)
-    if (!product) return
+    if (!product) {
+      setSubmitError("Produto selecionado não encontrado.")
+      return
+    }
+
+    setSubmitError(null)
+    setIsSubmitting(true)
 
     const precoUnitario =
       values.emPromocao && values.precoPromocional ? values.precoPromocional : product.precoVenda
 
-    registerSale({ ...values, precoUnitario })
+    const result = await registerSale({ ...values, precoUnitario })
+    setIsSubmitting(false)
+
+    if (!result.success) {
+      setSubmitError(result.error ?? "Não foi possível registrar a venda. Tente novamente.")
+      return
+    }
+
     form.reset({
       clienteId: clienteId ?? "",
       productId: "",
@@ -263,11 +278,19 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
           />
         )}
 
+        {submitError && (
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {submitError}
+          </p>
+        )}
+
         <div className="flex justify-end gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <Button type="submit">Registrar Venda</Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Registrando..." : "Registrar Venda"}
+          </Button>
         </div>
       </form>
     </Form>

@@ -157,6 +157,37 @@ function makeProduct(
   }
 }
 
+function formatSupabaseError(error: {
+  message?: string
+  code?: string
+  details?: string
+}): string {
+  // Map common Supabase error codes to user-friendly Portuguese messages
+  const message = error.message || error.details || ""
+
+  if (error.code === "PGRST116") {
+    return "Nenhuma linha foi retornada. Verifique as informações do produto e tente novamente."
+  }
+  if (message.includes("localizacao_id") || message.includes("localization")) {
+    return "A localização selecionada não existe. Selecione uma localização válida."
+  }
+  if (message.includes("unique violation") || message.includes("duplicate")) {
+    return "Este SKU já existe no sistema. Use um SKU diferente."
+  }
+  if (message.includes("foreign key")) {
+    return "Uma referência obrigatória está faltando (localização). Verifique os dados."
+  }
+  if (message.includes("not null") || message.includes("null")) {
+    return `Campo obrigatório não preenchido: ${message}`
+  }
+  if (message.includes("connection") || message.includes("timeout")) {
+    return "Erro de conexão com o servidor. Verifique sua internet e tente novamente."
+  }
+
+  // Return the actual error message if we can't identify it
+  return `Erro ao salvar: ${message}`
+}
+
 async function persistProduct(product: Product): Promise<{ success: boolean; error?: string }> {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     return { success: false, error: "Você está offline. Verifique a conexão e tente novamente." }
@@ -170,7 +201,7 @@ async function persistProduct(product: Product): Promise<{ success: boolean; err
     console.error("Failed to insert product", productError)
     return {
       success: false,
-      error: "Não foi possível salvar o produto. Verifique a conexão e tente novamente.",
+      error: formatSupabaseError(productError),
     }
   }
 
@@ -183,8 +214,7 @@ async function persistProduct(product: Product): Promise<{ success: boolean; err
     await supabase.from("products").delete().eq("id", product.id)
     return {
       success: false,
-      error:
-        "O produto não foi salvo por completo. A conexão pode ter caído e o cadastro parcial foi removido. Tente novamente.",
+      error: `Erro ao salvar variante: ${variantsError.message || variantsError.details || "Tente novamente."}`,
     }
   }
 

@@ -80,11 +80,11 @@ function buildSale(input: {
 interface SalesState {
   sales: Sale[]
   fetchAll: () => Promise<void>
-  registerSale: (input: RegisterSaleInput) => void
+  registerSale: (input: RegisterSaleInput) => Promise<{ success: boolean; error?: string }>
   /** Usada pelo fechamento da Malinha Amarelinha: registra a venda sem
    *  mexer no estoque, porque a quantidade já saiu da loja no envio da
    *  malinha (ver `features/malinhas`). */
-  recordSaleWithoutStockChange: (input: RecordSaleWithoutStockChangeInput) => void
+  recordSaleWithoutStockChange: (input: RecordSaleWithoutStockChangeInput) => Promise<{ success: boolean; error?: string }>
 }
 
 export const useSalesStore = create<SalesState>((set) => ({
@@ -97,14 +97,32 @@ export const useSalesStore = create<SalesState>((set) => ({
     }
     set({ sales: (data ?? []).map(fromRow) })
   },
-  registerSale: (input) => {
+  registerSale: async (input) => {
     const sale = buildSale(input)
-    set((state) => ({ sales: [sale, ...state.sales] }))
-    supabase
+
+    // Try to insert the sale into Supabase first
+    const { error: saleError } = await supabase
       .from("sales")
       .insert(toRow(sale))
-      .then(({ error }) => error && console.error("Failed to insert sale", error))
 
+    if (saleError) {
+      console.error("Failed to insert sale", saleError)
+      // Return user-friendly error message
+      let errorMessage = "Não foi possível registrar a venda. Tente novamente."
+      if (saleError.message?.includes("cliente_id")) {
+        errorMessage = "Cliente inválido. Selecione um cliente válido."
+      } else if (saleError.message?.includes("product_id") || saleError.message?.includes("variant_id")) {
+        errorMessage = "Produto ou variante inválido. Selecione um produto válido."
+      } else if (saleError.message?.includes("connection") || saleError.message?.includes("timeout")) {
+        errorMessage = "Erro de conexão. Verifique sua internet e tente novamente."
+      }
+      return { success: false, error: errorMessage }
+    }
+
+    // Only update local state after Supabase confirms the sale
+    set((state) => ({ sales: [sale, ...state.sales] }))
+
+    // Only decrease inventory after sale is persisted
     useProductsStore.getState().adjustVariantQuantity(input.variantId, -input.quantidade)
     useMovementsStore.getState().addMovement({
       variantId: input.variantId,
@@ -113,15 +131,26 @@ export const useSalesStore = create<SalesState>((set) => ({
       quantidade: -input.quantidade,
       observacao: `Venda registrada (${input.formaPagamento})`,
     })
+
+    return { success: true }
   },
-  recordSaleWithoutStockChange: (input) => {
+  recordSaleWithoutStockChange: async (input) => {
     const sale = buildSale(input)
-    set((state) => ({ sales: [sale, ...state.sales] }))
-    supabase
+
+    // Try to insert the sale into Supabase first
+    const { error: saleError } = await supabase
       .from("sales")
       .insert(toRow(sale))
-      .then(({ error }) => error && console.error("Failed to insert sale", error))
 
+    if (saleError) {
+      console.error("Failed to insert sale", saleError)
+      return { success: false, error: "Não foi possível registrar a venda. Tente novamente." }
+    }
+
+    // Only update local state after Supabase confirms the sale
+    set((state) => ({ sales: [sale, ...state.sales] }))
+
+    // Record the movement (without stock change, since inventory was already adjusted on malinha creation)
     useMovementsStore.getState().addMovement({
       variantId: input.variantId,
       productId: input.productId,
@@ -129,5 +158,7 @@ export const useSalesStore = create<SalesState>((set) => ({
       quantidade: -input.quantidade,
       observacao: input.observacao ?? `Venda via Malinha Amarelinha (${input.formaPagamento})`,
     })
+
+    return { success: true }
   },
 }))

@@ -74,7 +74,7 @@ interface MalinhasState {
   addItem: (malinhaId: string, input: { productId: string; variantId: string; quantidade: number }) => void
   removeItem: (malinhaId: string, itemId: string) => void
   enviarMalinha: (malinhaId: string) => void
-  fecharMalinha: (malinhaId: string, input: FecharMalinhaInput) => void
+  fecharMalinha: (malinhaId: string, input: FecharMalinhaInput) => Promise<{ success: boolean; error?: string }>
 }
 
 export const useMalinhasStore = create<MalinhasState>((set, get) => ({
@@ -187,19 +187,21 @@ export const useMalinhasStore = create<MalinhasState>((set, get) => ({
       .eq("id", malinhaId)
       .then(({ error }) => error && console.error("Failed to update malinha on envio", error))
   },
-  fecharMalinha: (malinhaId, input) => {
+  fecharMalinha: async (malinhaId, input) => {
     const malinha = get().malinhas.find((m) => m.id === malinhaId)
-    if (!malinha) return
+    if (!malinha) return { success: false, error: "Malinha não encontrada." }
 
     const products = useProductsStore.getState().products
 
-    const itensAtualizados = malinha.itens.map((item) => {
+    // Process each item and record sales
+    const itensAtualizados: MalinhaItem[] = []
+    for (const item of malinha.itens) {
       const vendida = Math.min(item.quantidade, Math.max(0, input.vendidos[item.id] ?? 0))
       const devolvida = item.quantidade - vendida
 
       if (vendida > 0) {
         const product = products.find((p) => p.id === item.productId)
-        useSalesStore.getState().recordSaleWithoutStockChange({
+        const saleResult = await useSalesStore.getState().recordSaleWithoutStockChange({
           clienteId: malinha.clienteId,
           productId: item.productId,
           variantId: item.variantId,
@@ -209,6 +211,11 @@ export const useMalinhasStore = create<MalinhasState>((set, get) => ({
           malinhaId: malinha.id,
           observacao: `Venda via ${malinha.numero} (${input.formaPagamento})`,
         })
+
+        if (!saleResult.success) {
+          console.error("Failed to record sale for malinha item", saleResult.error)
+          return { success: false, error: saleResult.error ?? "Erro ao registrar venda da malinha." }
+        }
       }
 
       if (devolvida > 0) {
@@ -228,8 +235,8 @@ export const useMalinhasStore = create<MalinhasState>((set, get) => ({
         .eq("id", item.id)
         .then(({ error }) => error && console.error("Failed to update malinha item on fechamento", error))
 
-      return { ...item, quantidadeVendida: vendida, quantidadeDevolvida: devolvida }
-    })
+      itensAtualizados.push({ ...item, quantidadeVendida: vendida, quantidadeDevolvida: devolvida })
+    }
 
     const dataDevolucao = new Date().toISOString().slice(0, 10)
     set((state) => ({
@@ -244,5 +251,7 @@ export const useMalinhasStore = create<MalinhasState>((set, get) => ({
       .update({ status: "fechada", data_devolucao: dataDevolucao })
       .eq("id", malinhaId)
       .then(({ error }) => error && console.error("Failed to update malinha on fechamento", error))
+
+    return { success: true }
   },
 }))
