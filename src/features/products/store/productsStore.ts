@@ -1,6 +1,77 @@
 import { create } from "zustand"
 import type { Product, ProductSource, ProductVariant } from "@/features/products/types"
 import { supabase } from "@/services/supabase"
+import {
+  createProductImageUrlMap,
+  isLegacyProductImage,
+  uploadProductImage,
+} from "@/services/productImageStorage"
+
+const PRODUCT_COLUMNS = [
+  "id",
+  "nome",
+  "sku",
+  "categoria",
+  "marca",
+  "preco_venda",
+  "status",
+  "foto_url",
+  "origem",
+  "created_at",
+  "em_promocao",
+  "preco_promocional",
+].join(",")
+
+let legacyMigrationPromise: Promise<void> | null = null
+
+function migrateLegacyProductImages(
+  onMigrated: (productId: string, signedUrl: string) => void
+): Promise<void> {
+  if (legacyMigrationPromise) return legacyMigrationPromise
+
+  legacyMigrationPromise = (async () => {
+    while (typeof navigator === "undefined" || navigator.onLine) {
+      // Small batches prevent the original ~60 MB payload from being downloaded at once.
+      const { data, error } = await supabase
+        .from("products")
+        .select("id,foto")
+        .is("foto_url", null)
+        .like("foto", "data:image/%")
+        .order("id")
+        .limit(5)
+
+      if (error) {
+        console.error("Failed to read legacy product images", error)
+        return
+      }
+      if (!data?.length) return
+
+      for (const row of data) {
+        if (!isLegacyProductImage(row.foto)) continue
+        try {
+          const path = await uploadProductImage(row.id, row.foto)
+          const { error: updateError } = await supabase
+            .from("products")
+            .update({ foto_url: path })
+            .eq("id", row.id)
+            .is("foto_url", null)
+          if (updateError) throw updateError
+
+          const imageUrls = await createProductImageUrlMap([path])
+          const signedUrl = imageUrls.get(path)
+          if (signedUrl) onMigrated(row.id, signedUrl)
+        } catch (migrationError) {
+          console.error(`Failed to migrate product image ${row.id}`, migrationError)
+          return
+        }
+      }
+    }
+  })().finally(() => {
+    legacyMigrationPromise = null
+  })
+
+  return legacyMigrationPromise
+}
 
 export interface NewProductInput {
   nome: string
@@ -80,7 +151,11 @@ function variantToRow(variant: ProductVariant, productIdOverride?: string) {
   }
 }
 
-function productFromRow(row: Record<string, unknown>): Omit<Product, "variants"> {
+function productFromRow(
+  row: Record<string, unknown>,
+  imageUrls: Map<string, string> = new Map()
+): Omit<Product, "variants"> {
+  const imagePath = (row.foto_url as string) ?? ""
   return {
     id: row.id as string,
     nome: row.nome as string,
@@ -89,7 +164,7 @@ function productFromRow(row: Record<string, unknown>): Omit<Product, "variants">
     marca: row.marca as string,
     precoVenda: Number(row.preco_venda),
     status: row.status as Product["status"],
-    foto: (row.foto as string) ?? undefined,
+    foto: imageUrls.get(imagePath) ?? (row.foto as string) ?? undefined,
     origem: row.origem as ProductSource,
     createdAt: row.created_at as string,
     emPromocao: row.em_promocao as boolean,
@@ -193,9 +268,24 @@ async function persistProduct(product: Product): Promise<{ success: boolean; err
     return { success: false, error: "Você está offline. Verifique a conexão e tente novamente." }
   }
 
+  let imagePath: string | null = null
+  if (isLegacyProductImage(product.foto)) {
+    try {
+      imagePath = await uploadProductImage(product.id, product.foto)
+    } catch (error) {
+      console.error("Failed to upload product image", error)
+      return { success: false, error: "Não foi possível enviar a foto do produto. Tente novamente." }
+    }
+  }
+
+  const productRow = productToRow(product) as ReturnType<typeof productToRow> & { foto_url?: string | null }
+  // New uploads go directly to Storage. The legacy Base64 column is retained only as rollback data.
+  productRow.foto = isLegacyProductImage(product.foto) ? null : productRow.foto
+  productRow.foto_url = imagePath
+
   const { error: productError } = await supabase
     .from("products")
-    .insert(productToRow(product))
+    .insert(productRow)
 
   if (productError) {
     console.error("Failed to insert product", productError)
@@ -243,7 +333,7 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
   products: [],
   fetchAll: async () => {
     const [productsRes, variantsRes] = await Promise.all([
-      supabase.from("products").select("*").order("created_at", { ascending: false }),
+      supabase.from("products").select(PRODUCT_COLUMNS).order("created_at", { ascending: false }),
       supabase.from("product_variants").select("*"),
     ])
     if (productsRes.error) {
@@ -254,6 +344,16 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
       console.error("Failed to fetch product variants", variantsRes.error)
       return
     }
+    const productRows = (productsRes.data ?? []) as unknown as Record<string, unknown>[]
+    let imageUrls = new Map<string, string>()
+    try {
+      imageUrls = await createProductImageUrlMap(
+        productRows.map((row) => (row.foto_url as string) ?? "")
+      )
+    } catch (error) {
+      console.error("Failed to create product image URLs", error)
+    }
+
     const variantsByProduct = new Map<string, ProductVariant[]>()
     for (const row of variantsRes.data ?? []) {
       const productId = row.product_id as string
@@ -261,11 +361,19 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
       list.push(variantFromRow(row))
       variantsByProduct.set(productId, list)
     }
-    const products = (productsRes.data ?? []).map((row) => ({
-      ...productFromRow(row),
+    const products = productRows.map((row) => ({
+      ...productFromRow(row, imageUrls),
       variants: variantsByProduct.get(row.id as string) ?? [],
     }))
     set({ products })
+
+    void migrateLegacyProductImages((productId, signedUrl) => {
+      set((state) => ({
+        products: state.products.map((product) =>
+          product.id === productId ? { ...product, foto: signedUrl } : product
+        ),
+      }))
+    })
   },
   addProduct: async (input) => {
     const product = makeProduct(input)
@@ -311,16 +419,32 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
       ],
     }
 
+    let nextPhoto = input.foto ?? existingProduct.foto
+    let imagePath: string | undefined
+    if (isLegacyProductImage(input.foto)) {
+      try {
+        imagePath = await uploadProductImage(id, input.foto)
+        const imageUrls = await createProductImageUrlMap([imagePath])
+        nextPhoto = imageUrls.get(imagePath) ?? input.foto
+      } catch (error) {
+        console.error("Failed to upload updated product image", error)
+        return { success: false, error: "Não foi possível enviar a nova foto. Tente novamente." }
+      }
+    }
+
+    updatedProduct.foto = nextPhoto
+    const productUpdate: Record<string, unknown> = {
+      nome: input.nome,
+      sku: input.sku,
+      categoria: input.categoria,
+      marca: input.marca,
+      preco_venda: input.precoVenda,
+    }
+    if (imagePath) productUpdate.foto_url = imagePath
+
     const { error: productError } = await supabase
       .from("products")
-      .update({
-        nome: input.nome,
-        sku: input.sku,
-        categoria: input.categoria,
-        marca: input.marca,
-        preco_venda: input.precoVenda,
-        foto: input.foto ?? existingProduct.foto ?? null,
-      })
+      .update(productUpdate)
       .eq("id", id)
 
     if (productError) {
@@ -373,11 +497,32 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
       ),
     }))
 
-    supabase
-      .from("products")
-      .update({ foto: foto ?? null })
-      .eq("id", id)
-      .then(({ error }) => error && console.error("Failed to update product photo", error))
+    if (!foto) {
+      supabase
+        .from("products")
+        .update({ foto_url: null })
+        .eq("id", id)
+        .then(({ error }) => error && console.error("Failed to remove product photo", error))
+      return
+    }
+
+    if (isLegacyProductImage(foto)) {
+      uploadProductImage(id, foto)
+        .then(async (path) => {
+          const { error } = await supabase.from("products").update({ foto_url: path }).eq("id", id)
+          if (error) throw error
+          const imageUrls = await createProductImageUrlMap([path])
+          const signedUrl = imageUrls.get(path)
+          if (signedUrl) {
+            set((state) => ({
+              products: state.products.map((product) =>
+                product.id === id ? { ...product, foto: signedUrl } : product
+              ),
+            }))
+          }
+        })
+        .catch((error) => console.error("Failed to update product photo", error))
+    }
   },
   adjustVariantQuantity: (variantId, delta) => {
     set((state) => ({

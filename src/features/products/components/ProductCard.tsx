@@ -43,7 +43,7 @@ export function ProductCard({ product, onView }: ProductCardProps) {
     <Card className="overflow-hidden gap-0 py-0">
       <div className="flex aspect-square items-center justify-center overflow-hidden bg-muted text-muted-foreground">
         {product.foto ? (
-          <img src={product.foto} alt={product.nome} className="size-full object-cover" />
+          <img loading="lazy" decoding="async" src={product.foto} alt={product.nome} className="size-full object-cover" />
         ) : (
           <ImageOff className="size-10" />
         )}

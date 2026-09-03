@@ -151,7 +151,7 @@ export function InventoryTable({ rows, onAdjust }: InventoryTableProps) {
                 <div className="flex items-start gap-3">
                   <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
                     {row.foto ? (
-                      <img src={row.foto} alt={row.produto} className="size-full object-cover" />
+                      <img loading="lazy" decoding="async" src={row.foto} alt={row.produto} className="size-full object-cover" />
                     ) : (
                       <ImageOff className="size-5" />
                     )}
@@ -209,7 +209,7 @@ export function InventoryTable({ rows, onAdjust }: InventoryTableProps) {
                     <TableCell>
                       <div className="flex size-9 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
                         {row.foto ? (
-                          <img src={row.foto} alt={row.produto} className="size-full object-cover" />
+                          <img loading="lazy" decoding="async" src={row.foto} alt={row.produto} className="size-full object-cover" />
                         ) : (
                           <ImageOff className="size-4" />
                         )}
