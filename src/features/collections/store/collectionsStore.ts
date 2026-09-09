@@ -65,13 +65,27 @@ export const useCollectionsStore = create<CollectionsState>((set) => ({
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString().slice(0, 10),
     }
-    set((state) => ({ collections: [collection, ...state.collections] }))
-    supabase
-      .from("collections")
-      .insert(toRow(collection))
-      .then(({ error }) => error && console.error("Failed to insert collection", error))
+
+    void (async () => {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !sessionData.session) {
+        console.error("Cannot insert collection: no valid Supabase session", sessionError)
+        window.alert("A coleção não foi salva. Sua sessão expirou. Entre novamente no sistema e tente de novo.")
+        return
+      }
+
+      const { error } = await supabase.from("collections").insert(toRow(collection))
+      if (error) {
+        console.error("Failed to insert collection", error)
+        window.alert(`A coleção não foi salva no banco de dados. ${error.message}`)
+        return
+      }
+
+      set((state) => ({ collections: [collection, ...state.collections] }))
+    })()
   },
   updateCollection: (id, input) => {
+    const previous = useCollectionsStore.getState().collections.find((collection) => collection.id === id)
     set((state) => ({
       collections: state.collections.map((collection) =>
         collection.id === id ? { ...collection, ...input } : collection
@@ -89,7 +103,18 @@ export const useCollectionsStore = create<CollectionsState>((set) => ({
         catalogo_pdf_nome: input.catalogoPdfNome || null,
       })
       .eq("id", id)
-      .then(({ error }) => error && console.error("Failed to update collection", error))
+      .then(({ error }) => {
+        if (!error) return
+        console.error("Failed to update collection", error)
+        if (previous) {
+          set((state) => ({
+            collections: state.collections.map((collection) =>
+              collection.id === id ? previous : collection
+            ),
+          }))
+        }
+        window.alert(`As alterações da coleção não foram salvas. ${error.message}`)
+      })
   },
   deleteCollection: async (id) => {
     const { error } = await supabase.from("collections").delete().eq("id", id)
