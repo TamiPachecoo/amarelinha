@@ -30,9 +30,12 @@ export function RegisterOrderPaymentForm({
   onSubmit,
 }: RegisterOrderPaymentFormProps) {
   const [forma, setForma] = useState<FormaPagamentoFornecedor>("avista")
-  const [entradaPercentual, setEntradaPercentual] = useState(0)
+  const [entradaPercentual, setEntradaPercentual] = useState("")
   const [prazosSelecionados, setPrazosSelecionados] = useState<number[]>([30])
   const [parcelasCartao, setParcelasCartao] = useState(2)
+
+  const entradaPercentualNumero = Math.min(100, Math.max(0, Number(entradaPercentual) || 0))
+  const valorEntrada = (valorTotal * entradaPercentualNumero) / 100
 
   function togglePrazo(dias: number) {
     setPrazosSelecionados((prev) =>
@@ -45,10 +48,18 @@ export function RegisterOrderPaymentForm({
     if (forma === "avista") {
       input = { forma: "avista", valorTotal, dataPedido }
     } else if (forma === "prazo") {
-      input = { forma: "prazo", valorTotal, dataPedido, entradaPercentual, prazosDias: prazosSelecionados }
+      if (prazosSelecionados.length === 0) return
+      input = {
+        forma: "prazo",
+        valorTotal,
+        dataPedido,
+        entradaPercentual: entradaPercentualNumero,
+        prazosDias: prazosSelecionados,
+      }
     } else if (forma === "cartao_parcelado") {
       input = { forma: "cartao_parcelado", valorTotal, dataPedido, parcelas: parcelasCartao }
     } else {
+      if (prazosSelecionados.length === 0) return
       input = { forma: "boleto", valorTotal, dataPedido, prazosDias: prazosSelecionados }
     }
     onSubmit(generatePaymentPlan(input))
@@ -75,14 +86,25 @@ export function RegisterOrderPaymentForm({
       {forma === "prazo" && (
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label>Entrada (%)</Label>
+            <Label htmlFor="entrada-percentual">Entrada (%)</Label>
             <Input
+              id="entrada-percentual"
               type="number"
+              inputMode="decimal"
               min={0}
               max={100}
+              step="0.01"
+              placeholder="Ex.: 30"
               value={entradaPercentual}
-              onChange={(e) => setEntradaPercentual(Number(e.target.value) || 0)}
+              onChange={(e) => setEntradaPercentual(e.target.value)}
+              onBlur={() => {
+                if (entradaPercentual === "") return
+                setEntradaPercentual(String(entradaPercentualNumero))
+              }}
             />
+            <p className="text-xs text-muted-foreground">
+              Valor da entrada: {formatBRL(valorEntrada)} · Restante: {formatBRL(valorTotal - valorEntrada)}
+            </p>
           </div>
           <div className="space-y-2">
             <Label>Parcelas restantes (dias)</Label>
@@ -137,7 +159,12 @@ export function RegisterOrderPaymentForm({
 
       <p className="text-sm text-muted-foreground">Total do pedido: {formatBRL(valorTotal)}</p>
 
-      <Button type="button" onClick={handleGenerate} className="w-full">
+      <Button
+        type="button"
+        onClick={handleGenerate}
+        className="w-full"
+        disabled={(forma === "prazo" || forma === "boleto") && prazosSelecionados.length === 0}
+      >
         Registrar Pagamento
       </Button>
     </div>
