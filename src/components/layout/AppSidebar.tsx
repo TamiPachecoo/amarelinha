@@ -8,6 +8,7 @@ import {
   PackageSearch,
   Settings,
   ShoppingBag,
+  ShoppingCart,
   Truck,
   Users,
   Wallet,
@@ -29,10 +30,7 @@ import {
 import { storeSettings } from "@/config/storeSettings"
 
 const navGroups = [
-  {
-    label: "Principal",
-    items: [{ title: "Painel", url: "/", icon: LayoutDashboard }],
-  },
+  { label: "Principal", items: [{ title: "Painel", url: "/", icon: LayoutDashboard }] },
   {
     label: "Compras",
     items: [
@@ -52,6 +50,7 @@ const navGroups = [
   {
     label: "Vendas",
     items: [
+      { title: "Registrar Venda", url: "/vendas", icon: ShoppingCart },
       { title: "Clientes", url: "/clientes", icon: Users },
       { title: "Malinha Amarelinha", url: "/malinha-amarelinha", icon: Briefcase },
     ],
@@ -71,16 +70,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-2 py-4">
         <div className="flex items-center gap-2">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary text-base">
-            {storeSettings.logoEmoji}
-          </div>
-          <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="font-extrabold text-foreground">{storeSettings.nomeCurto}</span>
-            <span className="text-xs text-muted-foreground">Gestor</span>
-          </div>
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary text-base">{storeSettings.logoEmoji}</div>
+          <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden"><span className="font-extrabold text-foreground">{storeSettings.nomeCurto}</span><span className="text-xs text-muted-foreground">Gestor</span></div>
         </div>
       </SidebarHeader>
-
       <SidebarContent>
         {navGroups.map((group) => (
           <SidebarGroup key={group.label}>
@@ -90,17 +83,8 @@ export function AppSidebar() {
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild tooltip={item.title}>
-                      <NavLink
-                        to={item.url}
-                        end={item.url === "/"}
-                        className={({ isActive }) =>
-                          isActive
-                            ? "bg-primary/15 font-semibold text-primary-foreground/90"
-                            : ""
-                        }
-                      >
-                        <item.icon />
-                        <span>{item.title}</span>
+                      <NavLink to={item.url} end={item.url === "/"} className={({ isActive }) => isActive ? "bg-primary/15 font-semibold text-primary-foreground/90" : ""}>
+                        <item.icon /><span>{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -110,10 +94,7 @@ export function AppSidebar() {
           </SidebarGroup>
         ))}
       </SidebarContent>
-
-      <SidebarFooter className="px-3 pb-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-        {storeSettings.nomeExibicao} {storeSettings.versao}
-      </SidebarFooter>
+      <SidebarFooter className="px-3 pb-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">{storeSettings.nomeExibicao} {storeSettings.versao}</SidebarFooter>
     </Sidebar>
   )
 }
