@@ -18,6 +18,7 @@ import { ProductsPage } from "@/pages/ProductsPage"
 import { PurchaseOrdersPage } from "@/pages/PurchaseOrdersPage"
 import { ReceivingPage } from "@/pages/ReceivingPage"
 import { ReportsPage } from "@/pages/ReportsPage"
+import { SalesPage } from "@/pages/SalesPage"
 import { SetPasswordPage } from "@/pages/SetPasswordPage"
 import { SettingsPage } from "@/pages/SettingsPage"
 import { SuppliersPage } from "@/pages/SuppliersPage"
@@ -39,6 +40,7 @@ function App() {
           <Route path="/recebimento" element={<ReceivingPage />} />
           <Route path="/produtos" element={<ProductsPage />} />
           <Route path="/estoque" element={<InventoryPage />} />
+          <Route path="/vendas" element={<SalesPage />} />
           <Route path="/malinha-amarelinha" element={<MalinhasPage />} />
           <Route path="/malinha-amarelinha/:malinhaId" element={<MalinhaDetailPage />} />
           <Route path="/clientes" element={<ClientesPage />} />
