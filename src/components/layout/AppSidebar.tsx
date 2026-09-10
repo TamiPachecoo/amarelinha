@@ -30,7 +30,13 @@ import {
 import { storeSettings } from "@/config/storeSettings"
 
 const navGroups = [
-  { label: "Principal", items: [{ title: "Painel", url: "/", icon: LayoutDashboard }] },
+  {
+    label: "Principal",
+    items: [
+      { title: "Painel", url: "/", icon: LayoutDashboard },
+      { title: "Registrar Venda", url: "/vendas", icon: ShoppingCart },
+    ],
+  },
   {
     label: "Compras",
     items: [
@@ -50,7 +56,6 @@ const navGroups = [
   {
     label: "Vendas",
     items: [
-      { title: "Registrar Venda", url: "/vendas", icon: ShoppingCart },
       { title: "Clientes", url: "/clientes", icon: Users },
       { title: "Malinha Amarelinha", url: "/malinha-amarelinha", icon: Briefcase },
     ],
