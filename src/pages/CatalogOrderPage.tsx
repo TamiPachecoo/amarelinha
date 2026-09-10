@@ -44,8 +44,8 @@ export function CatalogOrderPage() {
   }
 
   function handleRemoveItem(index: number) { setItens((prev) => prev.filter((_, i) => i !== index)) }
-  function handleExportPdf() { if (supplier) exportOrderToPdf(itens, { supplierNome: supplier.nome, collectionNome: collection.nome }) }
-  function handleExportCsv() { if (supplier) exportOrderToCsv(itens, { supplierNome: supplier.nome, collectionNome: collection.nome }) }
+  function handleExportPdf() { if (supplier) exportOrderToPdf(itens, { supplierNome: supplier.nome, collectionNome: collection!.nome }) }
+  function handleExportCsv() { if (supplier) exportOrderToCsv(itens, { supplierNome: supplier.nome, collectionNome: collection!.nome }) }
 
   async function handleCreateOrder() {
     if (!collection || itens.length === 0 || isSaving) return
