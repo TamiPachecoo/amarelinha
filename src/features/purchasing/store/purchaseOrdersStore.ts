@@ -84,12 +84,20 @@ function orderToRow(order: PurchaseOrder) {
   }
 }
 
+async function requireSession() {
+  const { data, error } = await supabase.auth.getSession()
+  if (error || !data.session) {
+    throw new Error("Sua sessão expirou. Entre novamente no sistema e tente de novo.")
+  }
+}
+
 let orderCounter = 0
 
 interface PurchaseOrdersState {
   orders: PurchaseOrder[]
   fetchAll: () => Promise<void>
-  addOrder: (input: PurchaseOrderFormValues, origem?: OrderOrigin) => string
+  addOrder: (input: PurchaseOrderFormValues, origem?: OrderOrigin) => Promise<string>
+  updateOrder: (id: string, input: PurchaseOrderFormValues) => Promise<void>
   updateStatus: (id: string, status: PurchaseOrderStatus) => void
   deleteOrder: (id: string) => Promise<string | null>
   receiveItem: (
@@ -126,10 +134,15 @@ export const usePurchaseOrdersStore = create<PurchaseOrdersState>((set, get) => 
       ...orderFromRow(row),
       itens: itemsByOrder.get(row.id as string) ?? [],
     }))
-    orderCounter = orders.length
+    orderCounter = Math.max(
+      orders.length,
+      ...orders.map((order) => Number(order.numero.replace(/\D/g, "")) || 0),
+      0
+    )
     set({ orders })
   },
-  addOrder: (input, origem = "manual") => {
+  addOrder: async (input, origem = "manual") => {
+    await requireSession()
     orderCounter += 1
     const order: PurchaseOrder = {
       id: crypto.randomUUID(),
@@ -147,23 +160,83 @@ export const usePurchaseOrdersStore = create<PurchaseOrdersState>((set, get) => 
       itens: input.itens.map((item) => ({ ...item, id: crypto.randomUUID(), quantidadeRecebida: 0 })),
       createdAt: new Date().toISOString().slice(0, 10),
     }
+
+    const { error: orderError } = await supabase.from("purchase_orders").insert(orderToRow(order))
+    if (orderError) {
+      orderCounter -= 1
+      console.error("Failed to insert purchase order", orderError)
+      throw new Error(orderError.message || "Não foi possível salvar o pedido de compra.")
+    }
+
+    const { error: itemsError } = await supabase
+      .from("purchase_order_items")
+      .insert(order.itens.map((item) => itemToRow(item, order.id)))
+
+    if (itemsError) {
+      await supabase.from("purchase_orders").delete().eq("id", order.id)
+      orderCounter -= 1
+      console.error("Failed to insert purchase order items", itemsError)
+      throw new Error(itemsError.message || "Não foi possível salvar os itens do pedido.")
+    }
+
     set((state) => ({ orders: [order, ...state.orders] }))
-    supabase
-      .from("purchase_orders")
-      .insert(orderToRow(order))
-      .then(({ error }) => {
-        if (error) {
-          console.error("Failed to insert purchase order", error)
-          return
-        }
-        supabase
-          .from("purchase_order_items")
-          .insert(order.itens.map((item) => itemToRow(item, order.id)))
-          .then(({ error: itemsError }) => {
-            if (itemsError) console.error("Failed to insert purchase order items", itemsError)
-          })
-      })
     return order.id
+  },
+  updateOrder: async (id, input) => {
+    await requireSession()
+    const current = get().orders.find((order) => order.id === id)
+    if (!current) throw new Error("Pedido não encontrado.")
+    if (current.status === "recebido" || current.status === "parcialmente_recebido") {
+      throw new Error("Pedidos com recebimento registrado não podem ser editados.")
+    }
+
+    const updated: PurchaseOrder = {
+      ...current,
+      supplierId: input.supplierId,
+      collectionId: input.collectionId || undefined,
+      dataPedido: input.dataPedido,
+      previsaoEntrega: input.previsaoEntrega || undefined,
+      notaFiscal: input.notaFiscal || undefined,
+      frete: input.frete,
+      desconto: input.desconto,
+      observacoes: input.observacoes || undefined,
+      itens: input.itens.map((item, index) => ({
+        ...item,
+        id: current.itens[index]?.id ?? crypto.randomUUID(),
+        quantidadeRecebida: current.itens[index]?.quantidadeRecebida ?? 0,
+        productId: current.itens[index]?.productId,
+        variantId: current.itens[index]?.variantId,
+      })),
+    }
+
+    const { error: orderError } = await supabase
+      .from("purchase_orders")
+      .update(orderToRow(updated))
+      .eq("id", id)
+    if (orderError) {
+      console.error("Failed to update purchase order", orderError)
+      throw new Error(orderError.message || "Não foi possível atualizar o pedido.")
+    }
+
+    const oldItems = current.itens.map((item) => itemToRow(item, id))
+    const { error: deleteError } = await supabase.from("purchase_order_items").delete().eq("purchase_order_id", id)
+    if (deleteError) {
+      console.error("Failed to replace purchase order items", deleteError)
+      throw new Error(deleteError.message || "Não foi possível atualizar os itens do pedido.")
+    }
+
+    const { error: insertError } = await supabase
+      .from("purchase_order_items")
+      .insert(updated.itens.map((item) => itemToRow(item, id)))
+    if (insertError) {
+      console.error("Failed to insert updated purchase order items", insertError)
+      await supabase.from("purchase_order_items").insert(oldItems)
+      throw new Error(insertError.message || "Não foi possível atualizar os itens do pedido.")
+    }
+
+    set((state) => ({
+      orders: state.orders.map((order) => (order.id === id ? updated : order)),
+    }))
   },
   updateStatus: (id, status) => {
     set((state) => ({
