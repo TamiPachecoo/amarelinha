@@ -22,7 +22,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { useCustomersStore } from "@/features/customers/store/customersStore"
 import { useProductsStore } from "@/features/products/store/productsStore"
-import { totalQuantidade } from "@/features/products/utils"
+import { formatBRL, totalQuantidade } from "@/features/products/utils"
 import { useSalesStore } from "@/features/sales/store/salesStore"
 import {
   saleSchema,
@@ -40,7 +40,8 @@ interface SaleFormProps {
 export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
   const customers = useCustomersStore((state) => state.customers)
   const products = useProductsStore((state) => state.products)
-  const registerSale = useSalesStore((state) => state.registerSale)
+  const registerSales = useSalesStore((state) => state.registerSales)
+  const [items, setItems] = useState<Array<SaleFormValues & { precoUnitario: number; nome: string }>>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -61,50 +62,81 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
   const selectedProduct = products.find((p) => p.id === selectedProductId)
   const availableVariants = selectedProduct?.variants.filter((v) => v.quantidade > 0) ?? []
   const emPromocao = form.watch("emPromocao")
+  const selectedQuantity = Number(form.watch("quantidade")) || 0
+  const previewPrice = emPromocao && Number(form.watch("precoPromocional")) > 0
+    ? Number(form.watch("precoPromocional")) : selectedProduct?.precoVenda ?? 0
+  const total = items.reduce((sum, item) => sum + item.precoUnitario * item.quantidade, 0)
 
   useEffect(() => {
     if (selectedProduct?.emPromocao && selectedProduct.precoPromocional) {
       form.setValue("emPromocao", true)
       form.setValue("precoPromocional", selectedProduct.precoPromocional)
+    } else {
+      form.setValue("emPromocao", false)
+      form.setValue("precoPromocional", undefined)
     }
   }, [selectedProduct, form])
 
-  async function handleSubmit(values: SaleFormValues) {
+  function addItem(values: SaleFormValues) {
     const product = products.find((p) => p.id === values.productId)
     if (!product) {
       setSubmitError("Produto selecionado não encontrado.")
       return
     }
 
-    setSubmitError(null)
-    setIsSubmitting(true)
-
-    const precoUnitario =
-      values.emPromocao && values.precoPromocional ? values.precoPromocional : product.precoVenda
-
-    const result = await registerSale({ ...values, precoUnitario })
-    setIsSubmitting(false)
-
-    if (!result.success) {
-      setSubmitError(result.error ?? "Não foi possível registrar a venda. Tente novamente.")
+    const variant = product.variants.find((v) => v.id === values.variantId)
+    const alreadyAdded = items.filter((item) => item.variantId === values.variantId)
+      .reduce((sum, item) => sum + item.quantidade, 0)
+    if (!variant || values.quantidade + alreadyAdded > variant.quantidade) {
+      setSubmitError("Quantidade maior que o estoque disponível para esta variante.")
       return
     }
-
+    const precoUnitario = values.emPromocao && values.precoPromocional
+      ? values.precoPromocional : product.precoVenda
+    if (!Number.isFinite(precoUnitario) || precoUnitario <= 0) {
+      setSubmitError("Informe um valor de venda válido para este produto.")
+      return
+    }
+    setSubmitError(null)
+    setItems((current) => [...current, { ...values, precoUnitario, nome: product.nome }])
     form.reset({
-      clienteId: clienteId ?? "",
+      ...values,
       productId: "",
       variantId: "",
       quantidade: 1,
-      formaPagamento: "pix",
       emPromocao: false,
       precoPromocional: undefined,
     })
+  }
+
+  async function saveSale() {
+    if (!items.length) return
+    const available = useProductsStore.getState().products
+    for (const item of items) {
+      const variant = available.flatMap((product) => product.variants).find((v) => v.id === item.variantId)
+      const count = items.filter((other) => other.variantId === item.variantId)
+        .reduce((sum, other) => sum + other.quantidade, 0)
+      if (!variant || count > variant.quantidade) {
+        setSubmitError("O estoque mudou. Remova ou ajuste os produtos e tente novamente.")
+        return
+      }
+    }
+    setSubmitError(null)
+    setIsSubmitting(true)
+    const result = await registerSales(items.map(({ nome: _nome, ...item }) => item))
+    setIsSubmitting(false)
+    if (!result.success) {
+      setSubmitError(result.error ?? "Não foi possível registrar a venda.")
+      return
+    }
+    setItems([])
+    form.reset()
     onSuccess()
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} noValidate className="space-y-4">
+      <form onSubmit={form.handleSubmit(addItem)} noValidate className="space-y-4">
         {!clienteId && (
           <FormField
             control={form.control}
@@ -112,7 +144,7 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Cliente</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={items.length > 0}>
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione o cliente" />
@@ -216,7 +248,7 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Forma de Pagamento</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={items.length > 0}>
                   <FormControl>
                     <SelectTrigger className="w-full">
                       <SelectValue />
@@ -238,7 +270,7 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
 
         {selectedProduct && (
           <p className="text-sm text-muted-foreground">
-            Preço de tabela: {selectedProduct.precoVenda.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            Valor de venda: {formatBRL(selectedProduct.precoVenda)} · Subtotal: {formatBRL(previewPrice * selectedQuantity)}
             {selectedProduct.emPromocao && " · 🏷️ este produto está em promoção"}
           </p>
         )}
@@ -284,12 +316,26 @@ export function SaleForm({ clienteId, onSuccess, onCancel }: SaleFormProps) {
           </p>
         )}
 
+        {items.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-border p-3 text-sm">
+            <p className="font-semibold">Produtos desta venda ({items.length})</p>
+            {items.map((item, index) => (
+              <div key={index} className="flex items-center justify-between gap-2">
+                <span>{item.quantidade} × {item.nome} · {formatBRL(item.precoUnitario)} cada</span>
+                <button type="button" className="text-destructive underline" onClick={() => setItems((current) => current.filter((_, i) => i !== index))}>Remover</button>
+              </div>
+            ))}
+            <p className="font-bold">Total: {formatBRL(total)}</p>
+          </div>
+        )}
+
         <div className="flex justify-end gap-3 pt-2">
           <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Registrando..." : "Registrar Venda"}
+          <Button type="submit" variant="outline" disabled={isSubmitting}>Adicionar Produto</Button>
+          <Button type="button" onClick={saveSale} disabled={isSubmitting || items.length === 0}>
+            {isSubmitting ? "Registrando..." : `Registrar Venda (${formatBRL(total)})`}
           </Button>
         </div>
       </form>

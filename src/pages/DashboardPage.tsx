@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shared/PageHeader"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertsPanel } from "@/features/dashboard/components/AlertsPanel"
+import { OutstandingBalances } from "@/features/customers/components/OutstandingBalances"
 import { MalinhaKpiCards } from "@/features/dashboard/components/MalinhaKpiCards"
 import { PurchasingKpiCards } from "@/features/dashboard/components/PurchasingKpiCards"
 import { RecentActivity } from "@/features/dashboard/components/RecentActivity"
@@ -93,6 +94,7 @@ export function DashboardPage() {
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">💰 Saúde Financeira</h2>
         <KpiCardGrid cards={financialCards} />
+        <OutstandingBalances />
       </div>
 
       {produtosEmEstoqueParados.length > 0 && (
