@@ -36,6 +36,7 @@ import { useSalesStore } from "@/features/sales/store/salesStore"
 import { usePaymentsStore } from "@/features/financial/store/paymentsStore"
 import { useProductsStore } from "@/features/products/store/productsStore"
 import { useCustomersStore } from "@/features/customers/store/customersStore"
+import { OutstandingBalances } from "@/features/customers/components/OutstandingBalances"
 import {
   formatBRL,
   semEstoque,
@@ -173,6 +174,7 @@ export function ReportsPage() {
         </TabsList>
 
         <TabsContent value="financeiro" className="space-y-4">
+          <OutstandingBalances />
           <div className="flex items-center justify-end">
             <Select value={String(financialMonths)} onValueChange={(v) => setFinancialMonths(Number(v))}>
               <SelectTrigger className="w-[160px]">

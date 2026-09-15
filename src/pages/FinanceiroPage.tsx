@@ -28,6 +28,7 @@ import { TrendingDown, TrendingUp, Wallet } from "lucide-react"
 
 import { useSalesStore } from "@/features/sales/store/salesStore"
 import { useCustomersStore } from "@/features/customers/store/customersStore"
+import { OutstandingBalances } from "@/features/customers/components/OutstandingBalances"
 import { usePaymentsStore } from "@/features/financial/store/paymentsStore"
 import { usePurchaseOrdersStore } from "@/features/purchasing/store/purchaseOrdersStore"
 import { useSuppliersStore } from "@/features/suppliers/store/suppliersStore"
@@ -115,6 +116,7 @@ export function FinanceiroPage() {
       </div>
 
       <KpiCardGrid cards={cards} />
+      <OutstandingBalances />
 
       <div className="h-64 rounded-xl border border-border bg-card p-4">
         <ResponsiveContainer width="100%" height="100%">

@@ -81,13 +81,14 @@ interface SalesState {
   sales: Sale[]
   fetchAll: () => Promise<void>
   registerSale: (input: RegisterSaleInput) => Promise<{ success: boolean; error?: string }>
+  registerSales: (inputs: RegisterSaleInput[]) => Promise<{ success: boolean; error?: string }>
   /** Usada pelo fechamento da Malinha Amarelinha: registra a venda sem
    *  mexer no estoque, porque a quantidade já saiu da loja no envio da
    *  malinha (ver `features/malinhas`). */
   recordSaleWithoutStockChange: (input: RecordSaleWithoutStockChangeInput) => Promise<{ success: boolean; error?: string }>
 }
 
-export const useSalesStore = create<SalesState>((set) => ({
+export const useSalesStore = create<SalesState>((set, get) => ({
   sales: [],
   fetchAll: async () => {
     const { data, error } = await supabase.from("sales").select("*").order("data", { ascending: false })
@@ -132,6 +133,26 @@ export const useSalesStore = create<SalesState>((set) => ({
       observacao: `Venda registrada (${input.formaPagamento})`,
     })
 
+    return { success: true }
+  },
+  registerSales: async (inputs) => {
+    if (!inputs.length) return { success: false, error: "Adicione pelo menos um produto." }
+    if (inputs.length === 1) return get().registerSale(inputs[0])
+    const sales = inputs.map(buildSale)
+    const { error } = await supabase.from("sales").insert(sales.map(toRow))
+    if (error) {
+      console.error("Failed to insert sale items", error)
+      return { success: false, error: "Não foi possível registrar os produtos. Tente novamente." }
+    }
+    set((state) => ({ sales: [...sales, ...state.sales] }))
+    for (const input of inputs) {
+      useProductsStore.getState().adjustVariantQuantity(input.variantId, -input.quantidade)
+      useMovementsStore.getState().addMovement({
+        variantId: input.variantId, productId: input.productId, tipo: "venda",
+        quantidade: -input.quantidade,
+        observacao: `Venda registrada (${input.formaPagamento})`,
+      })
+    }
     return { success: true }
   },
   recordSaleWithoutStockChange: async (input) => {
