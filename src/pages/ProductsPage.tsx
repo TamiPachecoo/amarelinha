@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Package, Pencil, Plus, Tag, Trash2 } from "lucide-react"
+import { useMemo, useState } from "react"
+import { Package, Pencil, Plus, RotateCcw, Tag, Trash2 } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -13,6 +13,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useCollectionsStore } from "@/features/collections/store/collectionsStore"
 import { useLocationsStore } from "@/features/locations/store/locationsStore"
@@ -58,6 +65,14 @@ function buildEditDefaultValues(product: Product): ProductFormValues {
   }
 }
 
+const ALL = "todos"
+
+function uniqueSorted(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" })
+  )
+}
+
 export function ProductsPage() {
   const [isDialogOpen, setDialogOpen] = useState(false)
   const [viewingProductId, setViewingProductId] = useState<string | null>(null)
@@ -71,10 +86,43 @@ export function ProductsPage() {
   const setPromocao = useProductsStore((state) => state.setPromocao)
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null)
   const [precoPromocionalDraft, setPrecoPromocionalDraft] = useState("")
+  const [sizeFilter, setSizeFilter] = useState(ALL)
+  const [colorFilter, setColorFilter] = useState(ALL)
+  const [brandFilter, setBrandFilter] = useState(ALL)
   const locations = useLocationsStore((state) => state.locations)
   const suppliers = useSuppliersStore((state) => state.suppliers)
   const collections = useCollectionsStore((state) => state.collections)
   const orders = usePurchaseOrdersStore((state) => state.orders)
+
+  const filterOptions = useMemo(
+    () => ({
+      sizes: uniqueSorted(products.flatMap((product) => product.variants.map((variant) => variant.tamanho))),
+      colors: uniqueSorted(products.flatMap((product) => product.variants.map((variant) => variant.cor))),
+      brands: uniqueSorted(products.map((product) => product.marca)),
+    }),
+    [products]
+  )
+
+  const filteredProducts = useMemo(
+    () =>
+      products.filter((product) => {
+        const matchesBrand = brandFilter === ALL || product.marca === brandFilter
+        const matchesSize =
+          sizeFilter === ALL || product.variants.some((variant) => variant.tamanho === sizeFilter)
+        const matchesColor =
+          colorFilter === ALL || product.variants.some((variant) => variant.cor === colorFilter)
+        return matchesBrand && matchesSize && matchesColor
+      }),
+    [products, brandFilter, sizeFilter, colorFilter]
+  )
+
+  const hasActiveFilters = sizeFilter !== ALL || colorFilter !== ALL || brandFilter !== ALL
+
+  function clearFilters() {
+    setSizeFilter(ALL)
+    setColorFilter(ALL)
+    setBrandFilter(ALL)
+  }
 
   const viewingProduct = products.find((p) => p.id === viewingProductId) ?? null
 
@@ -189,15 +237,77 @@ export function ProductsPage() {
         </div>
       )}
 
+      {products.length > 0 && (
+        <div className="mb-5 rounded-xl border border-border bg-card p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Select value={sizeFilter} onValueChange={setSizeFilter}>
+              <SelectTrigger className="w-full" aria-label="Filtrar produtos por tamanho">
+                <SelectValue placeholder="Tamanho" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos os tamanhos</SelectItem>
+                {filterOptions.sizes.map((size) => (
+                  <SelectItem key={size} value={size}>{size}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={colorFilter} onValueChange={setColorFilter}>
+              <SelectTrigger className="w-full" aria-label="Filtrar produtos por cor">
+                <SelectValue placeholder="Cor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todas as cores</SelectItem>
+                {filterOptions.colors.map((color) => (
+                  <SelectItem key={color} value={color}>{color}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={brandFilter} onValueChange={setBrandFilter}>
+              <SelectTrigger className="w-full" aria-label="Filtrar produtos por marca">
+                <SelectValue placeholder="Marca" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todas as marcas</SelectItem>
+                {filterOptions.brands.map((brand) => (
+                  <SelectItem key={brand} value={brand}>{brand}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+            <span>{filteredProducts.length} de {products.length} produtos</span>
+            {hasActiveFilters && (
+              <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+                <RotateCcw className="size-4" /> Limpar filtros
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {products.length === 0 ? (
         <EmptyState
           icon={Package}
           title="Nenhum produto cadastrado"
           description="Cadastre seu primeiro produto para começar a controlar o estoque."
         />
+      ) : filteredProducts.length === 0 ? (
+        <div className="space-y-3">
+          <EmptyState
+            icon={Package}
+            title="Nenhum produto encontrado"
+            description="Não há produtos com essa combinação de tamanho, cor e marca."
+          />
+          <div className="flex justify-center">
+            <Button type="button" variant="outline" onClick={clearFilters}>Limpar filtros</Button>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <ProductCard key={product.id} product={product} onView={handleOpenProduct} />
           ))}
         </div>
