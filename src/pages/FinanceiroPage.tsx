@@ -14,6 +14,7 @@ import {
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { KpiCardGrid } from "@/components/shared/KpiCardGrid"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -24,9 +25,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TrendingDown, TrendingUp, Wallet } from "lucide-react"
+import { TrendingDown, TrendingUp, Undo2, Wallet } from "lucide-react"
 
 import { useSalesStore } from "@/features/sales/store/salesStore"
+import { CancelSaleDialog } from "@/features/sales/components/CancelSaleDialog"
+import type { Sale } from "@/features/sales/types"
 import { useCustomersStore } from "@/features/customers/store/customersStore"
 import { OutstandingBalances } from "@/features/customers/components/OutstandingBalances"
 import { usePaymentsStore } from "@/features/financial/store/paymentsStore"
@@ -40,6 +43,7 @@ import {
   type Period,
 } from "@/features/financial/utils"
 import { formatBRL } from "@/features/products/utils"
+import { useProductsStore } from "@/features/products/store/productsStore"
 import { formaPagamentoLabel } from "@/features/sales/types"
 
 function monthPeriod(monthValue: string): Period {
@@ -50,11 +54,14 @@ function monthPeriod(monthValue: string): Period {
 export function FinanceiroPage() {
   const sales = useSalesStore((state) => state.sales)
   const customers = useCustomersStore((state) => state.customers)
+  const products = useProductsStore((state) => state.products)
   const payments = usePaymentsStore((state) => state.payments)
   const orders = usePurchaseOrdersStore((state) => state.orders)
   const suppliers = useSuppliersStore((state) => state.suppliers)
 
   const [month, setMonth] = useState(() => format(new Date(), "yyyy-MM"))
+  const [cancelingSale, setCancelingSale] = useState<Sale | null>(null)
+  const [cancelFeedback, setCancelFeedback] = useState<string | null>(null)
   const period = useMemo(() => monthPeriod(month), [month])
 
   const receita = receitaNoPeriodo(sales, period)
@@ -82,6 +89,10 @@ export function FinanceiroPage() {
 
   function customerName(id: string) {
     return customers.find((c) => c.id === id)?.nomeCompleto ?? "—"
+  }
+
+  function productName(id: string) {
+    return products.find((product) => product.id === id)?.nome ?? "Produto"
   }
 
   function orderInfo(id: string) {
@@ -118,6 +129,12 @@ export function FinanceiroPage() {
       <KpiCardGrid cards={cards} />
       <OutstandingBalances />
 
+      {cancelFeedback && (
+        <p className="rounded-md border border-brand-green/40 bg-brand-green/10 px-3 py-2 text-sm text-foreground">
+          {cancelFeedback}
+        </p>
+      )}
+
       <div className="h-64 rounded-xl border border-border bg-card p-4">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData}>
@@ -147,12 +164,13 @@ export function FinanceiroPage() {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Forma</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {salesNoPeriodo.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
                       Nenhuma venda neste período.
                     </TableCell>
                   </TableRow>
@@ -167,6 +185,17 @@ export function FinanceiroPage() {
                         {formaPagamentoLabel[sale.formaPagamento]}
                       </TableCell>
                       <TableCell className="text-right font-medium">{formatBRL(sale.total)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => { setCancelFeedback(null); setCancelingSale(sale) }}
+                        >
+                          <Undo2 className="size-4" /> Cancelar
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -222,6 +251,14 @@ export function FinanceiroPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <CancelSaleDialog
+        sale={cancelingSale}
+        customerName={cancelingSale ? customerName(cancelingSale.clienteId) : ""}
+        productName={cancelingSale ? productName(cancelingSale.productId) : ""}
+        onOpenChange={(open) => !open && setCancelingSale(null)}
+        onCanceled={() => setCancelFeedback("Venda cancelada. O financeiro e o estoque foram atualizados.")}
+      />
     </div>
   )
 }

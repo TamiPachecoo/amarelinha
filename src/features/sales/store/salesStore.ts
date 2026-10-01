@@ -82,6 +82,7 @@ interface SalesState {
   fetchAll: () => Promise<void>
   registerSale: (input: RegisterSaleInput) => Promise<{ success: boolean; error?: string }>
   registerSales: (inputs: RegisterSaleInput[]) => Promise<{ success: boolean; error?: string }>
+  cancelSale: (saleId: string) => Promise<{ success: boolean; error?: string }>
   /** Usada pelo fechamento da Malinha Amarelinha: registra a venda sem
    *  mexer no estoque, porque a quantidade já saiu da loja no envio da
    *  malinha (ver `features/malinhas`). */
@@ -153,6 +154,84 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         observacao: `Venda registrada (${input.formaPagamento})`,
       })
     }
+    return { success: true }
+  },
+  cancelSale: async (saleId) => {
+    const sale = get().sales.find((item) => item.id === saleId)
+    if (!sale) return { success: false, error: "Venda não encontrada." }
+
+    const { data: variant, error: variantError } = await supabase
+      .from("product_variants")
+      .select("quantidade")
+      .eq("id", sale.variantId)
+      .single()
+
+    if (variantError || !variant) {
+      console.error("Failed to load stock before canceling sale", variantError)
+      return { success: false, error: "Não foi possível confirmar o estoque atual. Tente novamente." }
+    }
+
+    const previousQuantity = Number(variant.quantidade)
+    const restoredQuantity = previousQuantity + sale.quantidade
+    const { data: updatedVariants, error: stockError } = await supabase
+      .from("product_variants")
+      .update({ quantidade: restoredQuantity })
+      .eq("id", sale.variantId)
+      .eq("quantidade", previousQuantity)
+      .select("id")
+
+    if (stockError || !updatedVariants?.length) {
+      console.error("Failed to restore stock while canceling sale", stockError)
+      return {
+        success: false,
+        error: stockError
+          ? "Não foi possível devolver o produto ao estoque. Tente novamente."
+          : "O estoque foi alterado em outro lugar. Atualize a página e tente novamente.",
+      }
+    }
+
+    const { data: deletedSales, error: saleError } = await supabase
+      .from("sales")
+      .delete()
+      .eq("id", sale.id)
+      .select("id")
+
+    if (saleError || !deletedSales?.length) {
+      const { error: rollbackError } = await supabase
+        .from("product_variants")
+        .update({ quantidade: previousQuantity })
+        .eq("id", sale.variantId)
+        .eq("quantidade", restoredQuantity)
+
+      if (rollbackError) console.error("Failed to roll back restored stock", rollbackError)
+      console.error("Failed to delete canceled sale", saleError)
+      return {
+        success: false,
+        error: rollbackError
+          ? "O cancelamento não foi concluído e o estoque precisa ser conferido."
+          : "Não foi possível cancelar a venda. Nenhuma alteração foi mantida.",
+      }
+    }
+
+    set((state) => ({ sales: state.sales.filter((item) => item.id !== sale.id) }))
+    useProductsStore.setState((state) => ({
+      products: state.products.map((product) => ({
+        ...product,
+        variants: product.variants.map((variantItem) =>
+          variantItem.id === sale.variantId
+            ? { ...variantItem, quantidade: restoredQuantity }
+            : variantItem
+        ),
+      })),
+    }))
+    useMovementsStore.getState().addMovement({
+      variantId: sale.variantId,
+      productId: sale.productId,
+      tipo: "ajuste",
+      quantidade: sale.quantidade,
+      observacao: `Cancelamento da venda ${sale.id.slice(0, 8)} — produto devolvido ao estoque`,
+    })
+
     return { success: true }
   },
   recordSaleWithoutStockChange: async (input) => {
