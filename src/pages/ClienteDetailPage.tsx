@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link, Navigate, useParams } from "react-router-dom"
-import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, Pencil, Plus, Trash2, Undo2 } from "lucide-react"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Badge } from "@/components/ui/badge"
@@ -33,8 +33,9 @@ import { calcularIdade, customerStats, saldoDevedor } from "@/features/customers
 import { useProductsStore } from "@/features/products/store/productsStore"
 import { formatBRL } from "@/features/products/utils"
 import { SaleForm } from "@/features/sales/components/SaleForm"
+import { CancelSaleDialog } from "@/features/sales/components/CancelSaleDialog"
 import { useSalesStore } from "@/features/sales/store/salesStore"
-import { formaPagamentoLabel } from "@/features/sales/types"
+import { formaPagamentoLabel, type Sale } from "@/features/sales/types"
 
 export function ClienteDetailPage() {
   const { clienteId } = useParams<{ clienteId: string }>()
@@ -53,6 +54,8 @@ export function ClienteDetailPage() {
   const [deletingChild, setDeletingChild] = useState<Child | null>(null)
   const [isPaymentOpen, setPaymentOpen] = useState(false)
   const [isSaleOpen, setSaleOpen] = useState(false)
+  const [cancelingSale, setCancelingSale] = useState<Sale | null>(null)
+  const [cancelFeedback, setCancelFeedback] = useState<string | null>(null)
 
   const customer = customers.find((c) => c.id === clienteId)
 
@@ -266,6 +269,11 @@ export function ClienteDetailPage() {
             Adicionar Filho(a)
           </Button>
         </div>
+        {cancelFeedback && (
+          <p className="rounded-md border border-brand-green/40 bg-brand-green/10 px-3 py-2 text-sm text-foreground">
+            {cancelFeedback}
+          </p>
+        )}
         {customer.filhos.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
             Nenhum filho cadastrado.
@@ -343,6 +351,7 @@ export function ClienteDetailPage() {
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead>Pagamento</TableHead>
                   <TableHead>Origem</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -360,6 +369,17 @@ export function ClienteDetailPage() {
                     <TableCell className="text-muted-foreground">
                       {sale.malinhaId ? "Malinha Amarelinha" : "Venda direta"}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => { setCancelFeedback(null); setCancelingSale(sale) }}
+                      >
+                        <Undo2 className="size-4" /> Cancelar
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -376,6 +396,14 @@ export function ClienteDetailPage() {
           <CustomerForm initialValues={customer} onSubmit={handleUpdate} onCancel={() => setEditOpen(false)} />
         </DialogContent>
       </Dialog>
+
+      <CancelSaleDialog
+        sale={cancelingSale}
+        customerName={customer.nomeCompleto}
+        productName={cancelingSale ? productName(cancelingSale.productId) : ""}
+        onOpenChange={(open) => !open && setCancelingSale(null)}
+        onCanceled={() => setCancelFeedback("Venda cancelada. O financeiro e o estoque foram atualizados.")}
+      />
 
       <Dialog open={isChildOpen} onOpenChange={setChildOpen}>
         <DialogContent className="sm:max-w-md">
