@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { formatBRL } from "@/features/products/utils"
 import { useSalesStore } from "@/features/sales/store/salesStore"
-import type { Sale } from "@/features/sales/types"
+import { saleGroupKey, type Sale } from "@/features/sales/types"
 
 interface CancelSaleDialogProps {
   sale: Sale | null
@@ -30,8 +30,13 @@ export function CancelSaleDialog({
   onCanceled,
 }: CancelSaleDialogProps) {
   const cancelSale = useSalesStore((state) => state.cancelSale)
+  const sales = useSalesStore((state) => state.sales)
+  const relatedSales = sale
+    ? sales.filter((item) => saleGroupKey(item.id) === saleGroupKey(sale.id))
+    : []
   const [isCanceling, setIsCanceling] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const saleTotal = relatedSales.reduce((sum, item) => sum + item.total, 0)
 
   async function handleConfirm() {
     if (!sale) return
@@ -64,7 +69,7 @@ export function CancelSaleDialog({
             Cancelar venda?
           </DialogTitle>
           <DialogDescription>
-            Esta ação retira a venda dos registros financeiros e devolve o produto ao estoque.
+            Esta ação retira a venda dos registros financeiros e devolve {relatedSales.length > 1 ? "todos os produtos" : "o produto"} ao estoque.
           </DialogDescription>
         </DialogHeader>
 
@@ -72,7 +77,9 @@ export function CancelSaleDialog({
           <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
             <p className="font-semibold text-foreground">{customerName}</p>
             <p className="text-muted-foreground">
-              {sale.quantidade} × {productName} · {formatBRL(sale.total)}
+              {relatedSales.length > 1
+                ? `${relatedSales.length} produtos nesta venda · ${formatBRL(saleTotal)}`
+                : `${sale.quantidade} × ${productName} · ${formatBRL(sale.total)}`}
             </p>
             <p className="text-muted-foreground">Venda de {sale.data}</p>
           </div>
