@@ -18,6 +18,12 @@ export interface Sale {
   emPromocao: boolean
 }
 
+/** Multi-item direct sales share the first four UUID blocks. Legacy and
+ * single-item sales naturally form a group containing only themselves. */
+export function saleGroupKey(saleId: string): string {
+  return saleId.slice(0, 24)
+}
+
 export const formaPagamentoLabel: Record<FormaPagamento, string> = {
   pix: "PIX",
   dinheiro: "Dinheiro",
